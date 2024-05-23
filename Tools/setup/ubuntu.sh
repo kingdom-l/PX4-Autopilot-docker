@@ -72,7 +72,7 @@ fi
 echo
 echo "Installing PX4 general dependencies"
 
-sudo apt-get update -y --quiet
+sudo apt-get update -y --quiet || true
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
 	astyle \
 	build-essential \
@@ -226,7 +226,7 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		# Add Gazebo binary repository
 		sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
 		echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
-		sudo apt-get update -y --quiet
+		sudo apt-get update -y --quiet || true
 
 		# Install Gazebo
 		gazebo_packages="gz-garden"
@@ -234,7 +234,7 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
 		wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
 		# Update list, since new gazebo-stable.list has been added
-		sudo apt-get update -y --quiet
+		sudo apt-get update -y --quiet || true
 
 		# Install Gazebo classic
 		if [[ "${UBUNTU_RELEASE}" == "18.04" ]]; then

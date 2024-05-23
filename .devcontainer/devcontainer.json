@@ -1,44 +1,74 @@
-// For format details, see https://aka.ms/vscode-remote/devcontainer.json or this file's README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.134.0/containers/cpp
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
 {
-	"name": "px4-dev-nuttx",
-	"image": "px4io/px4-dev-nuttx-focal:2022-08-12",
-
-	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
-
-	// Set *default* container specific settings.json values on container create.
-	"settings": {
-		"terminal.integrated.shell.linux": "/bin/bash"
+	"name": "Existing Dockerfile",
+	"build": {
+		// Sets the run context to one level up instead of the .devcontainer folder.
+		"context": "..",
+		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+		"dockerfile": "./Dockerfile"
 	},
-
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-		"chiehyu.vscode-astyle",
-		"dan-c-underwood.arm",
-		"editorconfig.editorconfig",
-		"fredericbonnet.cmake-test-adapter",
-		"github.vscode-pull-request-github",
-		"marus25.cortex-debug",
-		"ms-azuretools.vscode-docker",
-		"ms-iot.vscode-ros",
-		"ms-python.python",
-		"ms-vscode.cmake-tools",
-		"ms-vscode.cpptools",
-		"ms-vscode.cpptools-extension-pack",
-		"redhat.vscode-yaml",
-		"streetsidesoftware.code-spell-checker",
-		"twxs.cmake",
-		"uavcan.dsdl",
-		"wholroyd.jinja",
-		"zixuanwang.linkerscript",
-		"ms-vscode.makefile-tools"
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"chiehyu.vscode-astyle",
+				"dan-c-underwood.arm",
+				"editorconfig.editorconfig",
+				"fredericbonnet.cmake-test-adapter",
+				"github.vscode-pull-request-github",
+				"marus25.cortex-debug",
+				"ms-azuretools.vscode-docker",
+				"ms-iot.vscode-ros",
+				"ms-python.python",
+				"ms-vscode.cmake-tools",
+				"ms-vscode.cpptools",
+				"ms-vscode.cpptools-extension-pack",
+				"redhat.vscode-yaml",
+				"streetsidesoftware.code-spell-checker",
+				"twxs.cmake",
+				"uavcan.dsdl",
+				"wholroyd.jinja",
+				"zixuanwang.linkerscript",
+				"ms-vscode.makefile-tools"
+			]
+		}
+	},
+	"runArgs": [
+		"--privileged",
+		"--network=host",
+		"--cap-add=SYS_PTRACE",
+		"--security-opt=seccomp:unconfined",
+		"--security-opt=apparmor:unconfined",
+		"--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+		"--device=/dev/dri:/dev/dri",
+		"--device=/dev/bus/usb:/dev/bus/usb",
+		"--device=/dev/video0:/dev/video0",
+		"--device=/dev/shm:/dev/shm",
+        	"--volume=/dev:/dev",
+		"--volume=/home/nubot/.Xauthority:/.Xauthority",
+		//"--runtime=nvidia"
 	],
+	"remoteEnv": {
+		"DISPLAY": "${localEnv:DISPLAY}",
+		"XAUTHORITY": "/.Xauthority",
+		"XMODIFIERS": "${localEnv:XMODIFIERS}",
+		"QT_IM_MODULE": "${localEnv:QT_IM_MODULE}",
+		"GTK_IM_MODULE": "${localEnv:GTK_IM_MODULE}",
+		"LANG": "${localEnv:LANG}"
+	}
 
-	"containerUser": "user",
-	"containerEnv": {
-		"LOCAL_USER_ID": "${localEnv:UID}"
-	},
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [14556],
+	// "forwardPorts": [],
+
+	// Uncomment the next line to run commands after the container is created.
+	// "postCreateCommand": "cat /etc/os-release",
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "devcontainer"
 }
