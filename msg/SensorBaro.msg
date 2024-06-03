@@ -9,4 +9,4 @@ float32 temperature       # temperature in degrees Celsius
 
 uint32 error_count
 
-uint8 ORB_QUEUE_LENGTH = 4
+uint8 ORB_QUEUE_LENGTH = 6

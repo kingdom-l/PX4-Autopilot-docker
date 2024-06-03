@@ -174,8 +174,14 @@ ControlAllocationPseudoInverse::allocate()
 	//Compute new gains if needed
 	updatePseudoInverse();
 
+	// 消除pitch耦合 dummy
+	// _mix(5,3) = 0;
+	// _mix(7,3) = 0;
+	// _mix(8,3) = 0;
+
 	_prev_actuator_sp = _actuator_sp;
 
 	// Allocate
 	_actuator_sp = _actuator_trim + _mix * (_control_sp - _control_trim);
+
 }

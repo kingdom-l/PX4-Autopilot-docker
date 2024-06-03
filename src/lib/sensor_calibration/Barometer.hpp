@@ -43,7 +43,7 @@ namespace calibration
 class Barometer
 {
 public:
-	static constexpr int MAX_SENSOR_COUNT = 4;
+	static constexpr int MAX_SENSOR_COUNT = 6;
 
 	static constexpr uint8_t DEFAULT_PRIORITY = 50;
 	static constexpr uint8_t DEFAULT_EXTERNAL_PRIORITY = 75;
@@ -74,6 +74,7 @@ public:
 	// apply offsets
 	inline float Correct(const float &data) const
 	{
+		// PX4_INFO("here correct %f", (double)_thermal_offset);
 		return data - _thermal_offset - _offset;
 	}
 

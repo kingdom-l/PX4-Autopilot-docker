@@ -27,3 +27,15 @@ fw_autotune_attitude_control start
 # Start Land Detector.
 #
 land_detector start fixedwing
+
+#
+# Start Mode Control.
+#hu
+mode_control start
+
+#
+# Start attitude controller.
+#
+hydro_att_control start
+hydro_rate_control start
+

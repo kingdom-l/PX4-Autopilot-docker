@@ -137,6 +137,7 @@ FixedwingRateControl::vehicle_manual_poll()
 
 				_vehicle_thrust_setpoint.xyz[0] = math::constrain((_manual_control_setpoint.throttle + 1.f) * .5f, 0.f, 1.f);
 			}
+			// PX4_INFO("_manual_control_setpoint: %f %f %f", (double)_manual_control_setpoint.pitch, (double)_manual_control_setpoint.roll, (double)_manual_control_setpoint.yaw);
 		}
 	}
 }
@@ -260,7 +261,9 @@ void FixedwingRateControl::Run()
 
 		vehicle_land_detected_poll();
 
+		// PX4_INFO("poll before _vehicle_torque_setpoint.xyz[2]: %f", (double)_vehicle_torque_setpoint.xyz[2]);
 		vehicle_manual_poll();
+		// PX4_INFO("poll after _vehicle_torque_setpoint.xyz[2]: %f", (double)_vehicle_torque_setpoint.xyz[2]);
 		vehicle_land_detected_poll();
 
 		/* if we are in rotary wing mode, do nothing */
@@ -377,6 +380,7 @@ void FixedwingRateControl::Run()
 					trim.copyTo(_vehicle_torque_setpoint.xyz);
 				}
 
+
 				/* throttle passed through if it is finite */
 				_vehicle_thrust_setpoint.xyz[0] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ? _rates_sp.thrust_body[0] : 0.0f;
 
@@ -407,10 +411,12 @@ void FixedwingRateControl::Run()
 			_rate_control.resetIntegral();
 		}
 
+		// PX4_INFO("before _vehicle_torque_setpoint.xyz[2]: %f %f %f", (double)_vehicle_torque_setpoint.xyz[0], (double)_vehicle_torque_setpoint.xyz[1], (double)_vehicle_torque_setpoint.xyz[2]);
 		// Add feed-forward from roll control output to yaw control output
 		// This can be used to counteract the adverse yaw effect when rolling the plane
 		_vehicle_torque_setpoint.xyz[2] = math::constrain(_vehicle_torque_setpoint.xyz[2] + _param_fw_rll_to_yaw_ff.get() *
 						  _vehicle_torque_setpoint.xyz[0], -1.f, 1.f);
+		// PX4_INFO("after _vehicle_torque_setpoint.xyz[2]: %f", (double)_vehicle_torque_setpoint.xyz[2]);
 
 		// Tailsitter: rotate back to body frame from airspeed frame
 		if (_vehicle_status.is_vtol_tailsitter) {

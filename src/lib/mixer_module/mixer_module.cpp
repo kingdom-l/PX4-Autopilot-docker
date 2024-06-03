@@ -424,11 +424,13 @@ bool MixingOutput::update()
 	for (int i = 0; i < MAX_ACTUATORS && _function_allocated[i]; ++i) {
 		_function_allocated[i]->update();
 	}
+	// PX4_INFO("MAX_ACTUATORS: %i", MAX_ACTUATORS); // 16
 
 	if (_has_backup_schedule) {
 		_interface.ScheduleDelayed(50_ms);
 	}
 
+	// PX4_INFO("_max_num_outputs: %i", _max_num_outputs); // 15
 	// check for actuator test
 	_actuator_test.update(_max_num_outputs, _param_thr_mdl_fac.get());
 
@@ -454,6 +456,9 @@ bool MixingOutput::update()
 			outputs[i] = NAN;
 		}
 	}
+	// PX4_INFO("outputs: %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", (double)outputs[0], (double)outputs[1], (double)outputs[2], (double)outputs[3], (double)outputs[4], (double)outputs[5],
+	// (double)outputs[6], (double)outputs[7], (double)outputs[8], (double)outputs[9], (double)outputs[10], (double)outputs[11], (double)outputs[12], (double)outputs[13], (double)outputs[14],
+	// (double)outputs[15]);
 
 	// Send output if any function mapped or one last disabling sample
 	if (!all_disabled || !_was_all_disabled) {

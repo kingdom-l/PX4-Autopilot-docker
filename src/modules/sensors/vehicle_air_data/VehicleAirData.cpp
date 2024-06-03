@@ -89,7 +89,6 @@ void VehicleAirData::AirTemperatureUpdate()
 	// limit the range to max 35°C to limt the error due to heated up airspeed sensors prior flight
 	if (_differential_pressure_sub.update(&differential_pressure) && PX4_ISFINITE(differential_pressure.temperature)
 	    && fabsf(differential_pressure.temperature) > FLT_EPSILON) {
-
 		_air_temperature_celsius = math::constrain(differential_pressure.temperature, temperature_min_celsius,
 					   temperature_max_celsius);
 	}
@@ -147,6 +146,7 @@ void VehicleAirData::Run()
 	for (int uorb_index = 0; uorb_index < MAX_SENSOR_COUNT; uorb_index++) {
 
 		const bool was_advertised = _advertised[uorb_index];
+		// PX4_INFO("was_advertised: %i", was_advertised); // _advertised[]: 1 0 0 0
 
 		if (!_advertised[uorb_index]) {
 			// use data's timestamp to throttle advertisement checks
@@ -166,8 +166,13 @@ void VehicleAirData::Run()
 			int sensor_sub_updates = 0;
 			sensor_baro_s report;
 
+			// PX4_INFO("ORB_QUEUE_LENGTH: %i", sensor_baro_s::ORB_QUEUE_LENGTH); // 6
+
 			while ((sensor_sub_updates < sensor_baro_s::ORB_QUEUE_LENGTH) && _sensor_sub[uorb_index].update(&report)) {
 				sensor_sub_updates++;
+				// PX4_INFO("sensor_sub_updates: %i", sensor_sub_updates); // 1
+
+				// PX4_INFO("device_id: %li , report: %li ", _calibration[uorb_index].device_id(), report.device_id); //  device_id: 5142025 , report: 5142025
 
 				if (_calibration[uorb_index].device_id() != report.device_id) {
 					_calibration[uorb_index].set_device_id(report.device_id);
@@ -189,20 +194,50 @@ void VehicleAirData::Run()
 						}
 
 						ParametersUpdate(true);
+						// PX4_INFO("here update");
 					}
 
 					// pressure corrected with offset (if available)
 					_calibration[uorb_index].SensorCorrectionsUpdate();
 					const float pressure_corrected = _calibration[uorb_index].Correct(report.pressure);
+					// sensor_data[uorb_index][sensor_sub_updates-1]=pressure_corrected;//添加进数组
 					const float pressure_sealevel_pa = _param_sens_baro_qnh.get() * 100.f;
 
-					float data_array[3] {pressure_corrected, report.temperature, getAltitudeFromPressure(pressure_corrected, pressure_sealevel_pa)};
-					_voter.put(uorb_index, report.timestamp, data_array, report.error_count, _priority[uorb_index]);
+					// PX4_INFO("sensor_sub_updates: %i pressure_corrected %f, pressure_sealevel_pa %f", sensor_sub_updates, (double)pressure_corrected,
+					// 	   (double)pressure_sealevel_pa); // sensor_sub_updates: 1(一直为1) pressure_corrected 102470.000000, pressure_sealevel_pa 101325.000000
+					// PX4_INFO("report.temperature %f", (double)report.temperature); // report.temperature 25.559999
 
-					_timestamp_sample_sum[uorb_index] += report.timestamp_sample;
-					_data_sum[uorb_index] += pressure_corrected;
-					_temperature_sum[uorb_index] += report.temperature;
+					float data_array[3];
+					if  (_param_sens_depth_medium.get() == Medium::Air){
+					// float data_array[3] {pressure_corrected, report.temperature, getAltitudeFromPressure(pressure_corrected, pressure_sealevel_pa)};
+						data_array[0]=pressure_corrected;
+						data_array[1]=report.temperature;
+						data_array[2]=getAltitudeFromPressure(pressure_corrected, pressure_sealevel_pa);
+					}
+					else{
+						if (_param_sens_depth_medium.get() == Medium::FreshWater){
+							float rho = 997.0474;
+							data_array[0]=pressure_corrected;
+							data_array[1]=report.temperature;
+							data_array[2]=getDepthFromPressure(pressure_corrected, pressure_sealevel_pa,rho);
+							// PX4_INFO("data_array: %f %f %f", (double)data_array[0], (double)data_array[1], (double)data_array[2]); // data_array: 102500.000000 25.480000 0.120171
+						}
+						else{
+							float rho = 1023.6;
+							data_array[0]=pressure_corrected;
+							data_array[1]=report.temperature;
+							data_array[2]=getDepthFromPressure(pressure_corrected, pressure_sealevel_pa,rho);
+						}
+					}
+					// PX4_INFO("uorb_index %i, report.error_count %li, _priority[%i] %i", uorb_index, report.error_count, uorb_index, _priority[uorb_index]);
+					_voter.put(uorb_index, report.timestamp, data_array, report.error_count, _priority[uorb_index]);
+					// PX4_INFO("uorb_index %i, report.error_count %li, _priority[%i] %i", uorb_index, report.error_count, uorb_index, _priority[uorb_index]);
+
+					_timestamp_sample_sum[uorb_index] += report.timestamp_sample; // 统计时间戳之和
+					_data_sum[uorb_index] += pressure_corrected;        // 统计压强之和
+					_temperature_sum[uorb_index] += report.temperature; // 统计温度之和
 					_data_sum_count[uorb_index]++;
+					// PX4_INFO("_data_sum_count %i: %i", uorb_index, _data_sum_count[uorb_index]);
 
 					_last_data[uorb_index] = pressure_corrected;
 
@@ -228,7 +263,6 @@ void VehicleAirData::Run()
 				PX4_INFO("%s switch from #%" PRId8 " -> #%d", _calibration[_selected_sensor_sub_index].SensorString(),
 					 _selected_sensor_sub_index, best_index);
 			}
-
 			_selected_sensor_sub_index = best_index;
 			_sensor_sub[_selected_sensor_sub_index].registerCallback();
 		}
@@ -242,23 +276,54 @@ void VehicleAirData::Run()
 			if (updated[instance] && (_data_sum_count[instance] > 0)) {
 
 				const hrt_abstime timestamp_sample = _timestamp_sample_sum[instance] / _data_sum_count[instance];
+				// PX4_INFO("timestamp_sample: %lli, _last_timestamp %i: %lli", timestamp_sample, instance, _last_publication_timestamp[instance]);
+				// PX4_INFO("%lli", _last_publication_timestamp[instance] + interval_us);
 
 				if (timestamp_sample >= _last_publication_timestamp[instance] + interval_us) {
 
 					bool publish = (time_now_us <= timestamp_sample + 1_s);
+					// PX4_INFO("time_now_us %lli %lli", time_now_us, timestamp_sample + 1_s);
 
 					if (publish) {
+						// selected_sub_index: 0, instance: 0, sensor_state: 0
+						// PX4_INFO("selected_sub_index: %i, instance: %i, sensor_state: %li", _selected_sensor_sub_index, instance, _voter.get_sensor_state(_selected_sensor_sub_index));
 						publish = (_selected_sensor_sub_index >= 0)
 							  && (instance == _selected_sensor_sub_index)
 							  && (_voter.get_sensor_state(_selected_sensor_sub_index) == DataValidator::ERROR_FLAG_NO_ERROR);
+							// PX4_INFO("publish: %i", publish);
 					}
 
 					if (publish) {
 						const float pressure_pa = _data_sum[instance] / _data_sum_count[instance];
 						const float temperature = _temperature_sum[instance] / _data_sum_count[instance];
 
-						const float pressure_sealevel_pa = _param_sens_baro_qnh.get() * 100.f;
-						const float altitude = getAltitudeFromPressure(pressure_pa, pressure_sealevel_pa);
+						float altitude = 0.0f;
+
+						if (_param_sens_depth_medium.get() == Medium::Air)
+						{
+							// current pressure at MSL in kPa (QNH in hPa)
+							const float p1 = _param_sens_baro_qnh.get() * 0.1f;
+
+							// measured pressure in kPa
+							const float p = pressure_pa * 0.001f;
+							altitude = getAltitudeFromPressure(p, p1);
+						}
+						else
+						{
+							float rho;//代表液体密度
+							const float pressure_sealevel_pa = _param_sens_baro_qnh.get() * 100.f; // 单位为hpa
+							if(_param_sens_depth_medium.get() == Medium::FreshWater){
+								rho = 997.0474;
+								//altitude =_data_sum[instance];
+							}
+							else{
+								rho = 1023.6;
+
+							}
+							// PX4_INFO("pressure_pa: %f, temperature: %f, sealevel_pa %f", (double)pressure_pa, (double)temperature, (double)pressure_sealevel_pa);
+							altitude =getDepthFromPressure(pressure_pa, pressure_sealevel_pa, rho);
+
+						}
 
 						// calculate air density
 						const float air_density = getDensityFromPressureAndTemp(pressure_pa, temperature);
@@ -285,6 +350,9 @@ void VehicleAirData::Run()
 					_data_sum[instance] = 0;
 					_temperature_sum[instance] = 0;
 					_data_sum_count[instance] = 0;
+					// for (int i = 0; i < 4; i++){
+					// 	sensor_data[instance][i] = 0.0f;
+					// }
 				}
 			}
 		}

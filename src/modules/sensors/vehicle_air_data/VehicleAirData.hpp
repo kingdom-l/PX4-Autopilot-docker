@@ -106,6 +106,8 @@ private:
 	DataValidatorGroup _voter{1};
 	unsigned _last_failover_count{0};
 
+	// float sensor_data[MAX_SENSOR_COUNT][MAX_SENSOR_COUNT];
+
 	uint64_t _timestamp_sample_sum[MAX_SENSOR_COUNT] {0};
 	float _data_sum[MAX_SENSOR_COUNT] {};
 	float _temperature_sum[MAX_SENSOR_COUNT] {};
@@ -125,7 +127,14 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::SENS_BARO_QNH>) _param_sens_baro_qnh,
-		(ParamFloat<px4::params::SENS_BARO_RATE>) _param_sens_baro_rate
+		(ParamFloat<px4::params::SENS_BARO_RATE>) _param_sens_baro_rate,
+		(ParamInt<px4::params::SENS_DEP_MEDIUM>) _param_sens_depth_medium
 	)
 };
 }; // namespace sensors
+
+enum Medium{
+	Air,
+	FreshWater,
+	SaltWater
+};

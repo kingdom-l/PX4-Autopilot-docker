@@ -1,0 +1,5 @@
+menuconfig MODULES_HYDRO_RATE_CONTROL
+	bool "hydro_rate_control"
+	default n
+	---help---
+		Enable support for hydro_rate_control

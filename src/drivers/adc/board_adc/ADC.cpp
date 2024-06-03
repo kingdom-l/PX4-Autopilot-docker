@@ -39,6 +39,20 @@
 #include <nuttx/ioexpander/gpio.h>
 #endif
 
+void bubling_sort(int32_t *arr, int32_t len)
+{
+	int i,j;
+	for(i=0; i<len; i++){
+		for(j=0; j<len-1-i; j++){
+			if(arr[j]>arr[j+1]){
+				arr[j]^=arr[j+1];
+				arr[j+1]^=arr[j];
+				arr[j]^=arr[j+1];
+			}
+		}
+	}
+}
+
 ADC::ADC(uint32_t base_address, uint32_t channels, bool publish_adc_report) :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
 	_publish_adc_report(publish_adc_report),
@@ -160,7 +174,19 @@ void ADC::update_adc_report(hrt_abstime now)
 
 	for (i = 0; i < max_num; i++) {
 		adc.channel_id[i] = _samples[i].am_channel;
-		adc.raw_data[i] = _samples[i].am_data;
+		if (adc.channel_id[i] == 8){
+			int32_t N=5;
+			int32_t sum[N]={0},t;
+			for(t=0;t<N;t++){
+				sum[t]=sample(_samples[i].am_channel);
+				px4_usleep(2000);
+			}
+			bubling_sort(sum,N);
+			adc.raw_data[i] = sum[N/2];
+		}
+		else{
+			adc.raw_data[i] = _samples[i].am_data;
+		}
 	}
 
 	for (; i < PX4_MAX_ADC_CHANNELS; ++i) {	// set unused channel id to -1
@@ -317,15 +343,24 @@ int ADC::test()
 		PX4_INFO_RAW("Resolution: %" PRId32 "\n", adc.resolution);
 		PX4_INFO_RAW("Voltage Reference: %f\n", (double)adc.v_ref);
 
-		for (unsigned l = 0; l < 20; ++l) {
+		for (unsigned l = 0; l < 2000; ++l) {
 			for (unsigned i = 0; i < PX4_MAX_ADC_CHANNELS; ++i) {
-				if (adc.channel_id[i] >= 0) {
-					PX4_INFO_RAW("% 2" PRId16 " :% 6" PRId32, adc.channel_id[i], adc.raw_data[i]);
+				//if (adc.channel_id[i] >= 0) {
+				if (adc.channel_id[i] == 8){
+					int32_t N=5;
+					int32_t sum[N]={0},t;
+					for(t=0;t<N;t++){
+						sum[t]=adc.raw_data[i];
+						px4_usleep(2000);
+					}
+					bubling_sort(sum,N);
+					//PX4_INFO_RAW("% 2" PRId16 " :% 6" PRId32, adc.channel_id[i], adc.raw_data[i]);
+					PX4_INFO_RAW("% 2" PRId16 " :% 6" PRId32, adc.channel_id[i], sum[N/2]);
 				}
 			}
 
 			PX4_INFO_RAW("\n");
-			px4_usleep(500000);
+			px4_usleep(5000);
 
 			if (!adc_sub_test.update(&adc)) {
 				PX4_INFO_RAW("\t ADC test failed.\n");

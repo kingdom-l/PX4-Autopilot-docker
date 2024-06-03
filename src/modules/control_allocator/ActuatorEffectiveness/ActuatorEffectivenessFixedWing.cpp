@@ -59,6 +59,12 @@ ActuatorEffectivenessFixedWing::getEffectivenessMatrix(Configuration &configurat
 	_first_control_surface_idx = configuration.num_actuators_matrix[0];
 	const bool surfaces_added_successfully = _control_surfaces.addActuators(configuration);
 
+	// for(int i = 0; i < NUM_ACTUATORS; ++i){
+	// 	PX4_INFO("%i configuration.effectiveness_matrices: %f %f %f %f %f %f", i, (double)configuration.effectiveness_matrices[0](0,i), (double)configuration.effectiveness_matrices[0](1,i),
+	// 			(double)configuration.effectiveness_matrices[0](2,i), (double)configuration.effectiveness_matrices[0](3,i), (double)configuration.effectiveness_matrices[0](4,i),
+	// 			(double)configuration.effectiveness_matrices[0](5,i));
+	// }
+
 	return (rotors_added_successfully && surfaces_added_successfully);
 }
 

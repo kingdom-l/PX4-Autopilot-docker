@@ -46,6 +46,7 @@
 #include <px4_platform_common/module_params.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionInterval.hpp>
+// #include <uORB/topics/actuator_servos.h>
 
 class ActuatorEffectivenessTilts;
 
@@ -54,6 +55,8 @@ using namespace time_literals;
 class ActuatorEffectivenessRotors : public ModuleParams, public ActuatorEffectiveness
 {
 public:
+	// uORB::Subscription _actuator_servos_sub{ORB_ID(actuator_servos)};
+
 	enum class AxisConfiguration {
 		Configurable, ///< axis can be configured
 		FixedForward, ///< axis is fixed, pointing forwards (positive X)
@@ -61,6 +64,10 @@ public:
 	};
 
 	static constexpr int NUM_ROTORS_MAX = 12;
+
+	// float rotors_pos[NUM_ROTORS_MAX][3] ={{0.16771, 0.10231, 0.1452}, {0.16771, -0.06967, 0.1452}};
+	// float rotors_pos[NUM_ROTORS_MAX][3] ={{0.16771, 0.08599, 0.1452}, {0.16771, -0.08599, 0.1452}};
+	// float alpha[2] = {0};
 
 	struct RotorGeometry {
 		matrix::Vector3f position;

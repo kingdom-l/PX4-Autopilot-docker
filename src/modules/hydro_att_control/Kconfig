@@ -1,0 +1,5 @@
+menuconfig MODULES_HYDRO_ATT_CONTROL
+	bool "hydro_att_control"
+	default n
+	---help---
+		Enable support for hydro_att_control

@@ -36,7 +36,7 @@
 using namespace matrix;
 
 ActuatorEffectivenessCustom::ActuatorEffectivenessCustom(ModuleParams *parent)
-	: ModuleParams(parent), _motors(this), _torque(this)
+	: ModuleParams(parent), _motors(this, ActuatorEffectivenessRotors::AxisConfiguration::Configurable, true), _torque(this), _tilts(this)
 {
 }
 
@@ -56,7 +56,23 @@ ActuatorEffectivenessCustom::getEffectivenessMatrix(Configuration &configuration
 	// Torque
 	const bool torque_added_successfully = _torque.addActuators(configuration);
 
-	return (motors_added_successfully && torque_added_successfully);
+	// Tilts
+	_first_tilt_idx = configuration.num_actuators_matrix[0];
+	_tilts.updateTorqueSign(_motors.geometry());
+	const bool tilts_added_successfully = _tilts.addActuators(configuration);
+
+	_tilt_offsets.setZero();
+
+	for (int i = 0; i < _tilts.count(); ++i) {
+		float delta_angle = _tilts.config(i).max_angle - _tilts.config(i).min_angle;
+
+		if (delta_angle > FLT_EPSILON) {
+			float trim = -1.f - 2.f * _tilts.config(i).min_angle / delta_angle;
+			_tilt_offsets(_first_tilt_idx + i) = trim;
+		}
+	}
+
+	return (motors_added_successfully && torque_added_successfully && tilts_added_successfully);
 }
 
 void ActuatorEffectivenessCustom::updateSetpoint(const matrix::Vector<float, NUM_AXES> &control_sp,

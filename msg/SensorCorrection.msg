@@ -33,9 +33,11 @@ float32[3] mag_offset_3	# magnetometer 3 offsets in the FRD board frame XYZ-axis
 
 # Corrections for barometric pressure outputs where corrected_pressure = raw_pressure * pressure_scale + pressure_offset
 # Note the corrections are in the sensor frame and must be applied before the sensor data is rotated into body frame
-uint32[4] baro_device_ids
-float32[4] baro_temperature
+uint32[6] baro_device_ids
+float32[6] baro_temperature
 float32 baro_offset_0		# barometric pressure 0 offsets in the sensor frame in Pascals
 float32 baro_offset_1		# barometric pressure 1 offsets in the sensor frame in Pascals
 float32 baro_offset_2		# barometric pressure 2 offsets in the sensor frame in Pascals
 float32 baro_offset_3		# barometric pressure 3 offsets in the sensor frame in Pascals
+float32 baro_offset_4
+float32 baro_offset_5

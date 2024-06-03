@@ -113,6 +113,15 @@ Sensors::~Sensors()
 
 #endif // CONFIG_SENSORS_VEHICLE_AIR_DATA
 
+// #if defined(CONFIG_SENSORS_VEHICLE_DEPTH_DATA)
+
+// 	if (_vehicle_depth_data) {
+// 		_vehicle_depth_data->Stop();
+// 		delete _vehicle_depth_data;
+// 	}
+
+// #endif // CONFIG_SENSORS_VEHICLE_DEPTH_DATA
+
 #if defined(CONFIG_SENSORS_VEHICLE_GPS_POSITION)
 
 	if (_vehicle_gps_position) {
@@ -241,6 +250,10 @@ int Sensors::parameters_update()
 #if defined(CONFIG_SENSORS_VEHICLE_AIR_DATA)
 	InitializeVehicleAirData();
 #endif // CONFIG_SENSORS_VEHICLE_AIR_DATA
+
+// #if defined(CONFIG_SENSORS_VEHICLE_DEPTH_DATA)
+// 	InitializeVehicleDepthData();
+// #endif // CONFIG_SENSORS_VEHICLE_DEPTH_DATA
 
 #if defined(CONFIG_SENSORS_VEHICLE_GPS_POSITION)
 	InitializeVehicleGPSPosition();
@@ -431,6 +444,21 @@ void Sensors::InitializeVehicleAirData()
 	}
 }
 #endif // CONFIG_SENSORS_VEHICLE_AIR_DATA
+
+// #if defined(CONFIG_SENSORS_VEHICLE_DEPTH_DATA)
+// void Sensors::InitializeVehicleDepthData()
+// {
+// 	if (_param_sys_has_baro.get()) {
+// 		if (_vehicle_depth_data == nullptr) {
+// 			_vehicle_depth_data = new VehicleDepthData();
+
+// 			if (_vehicle_depth_data) {
+// 				_vehicle_depth_data->Start();
+// 			}
+// 		}
+// 	}
+// }
+// #endif // CONFIG_SENSORS_VEHICLE_DEPTH_DATA
 
 #if defined(CONFIG_SENSORS_VEHICLE_GPS_POSITION)
 void Sensors::InitializeVehicleGPSPosition()

@@ -76,9 +76,10 @@ float getPressureFromAltitude(const float altitude_m);
 *
 * @param pressure_pa ambient pressure in Pa
 * @param pressure_sealevel_pa sea level pressure in Pa
+* @param rho
 */
 float getAltitudeFromPressure(float pressure_pa, float pressure_sealevel_pa);
-
+float getDepthFromPressure(float pressure_pa, float pressure_sealevel_pa, float rho);
 /**
 * Get standard temperature at altitude.
 *

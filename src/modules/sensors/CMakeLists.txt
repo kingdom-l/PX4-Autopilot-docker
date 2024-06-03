@@ -45,6 +45,10 @@ if(CONFIG_SENSORS_VEHICLE_AIR_DATA)
 	add_subdirectory(vehicle_air_data)
 endif()
 
+if(CONFIG_SENSORS_VEHICLE_DEPTH_DATA)
+	add_subdirectory(vehicle_depth_data)
+endif()
+
 if(CONFIG_SENSORS_VEHICLE_ANGULAR_VELOCITY)
 	add_subdirectory(vehicle_angular_velocity)
 endif()

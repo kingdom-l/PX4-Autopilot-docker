@@ -231,3 +231,5 @@ then
 	# start last (wait for possible icm20948 passthrough mode)
 	ak09916 -X -q start
 fi
+
+ms5837 start -X

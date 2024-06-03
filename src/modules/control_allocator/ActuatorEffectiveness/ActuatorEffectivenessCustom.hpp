@@ -36,6 +36,7 @@
 #include "ActuatorEffectiveness.hpp"
 #include "ActuatorEffectivenessRotors.hpp"
 #include "ActuatorEffectivenessControlSurfaces.hpp"
+#include "ActuatorEffectivenessTilts.hpp"
 
 class ActuatorEffectivenessCustom : public ModuleParams, public ActuatorEffectiveness
 {
@@ -56,4 +57,15 @@ protected:
 	ActuatorEffectivenessControlSurfaces _torque;
 
 	uint32_t _motors_mask{};
+
+	ActuatorEffectivenessTilts _tilts;
+	ActuatorVector _tilt_offsets;
+	int _first_tilt_idx{0};
+
+	struct YawTiltSaturationFlags {
+		bool tilt_yaw_pos;
+		bool tilt_yaw_neg;
+	};
+
+	YawTiltSaturationFlags _yaw_tilt_saturation_flags{};
 };

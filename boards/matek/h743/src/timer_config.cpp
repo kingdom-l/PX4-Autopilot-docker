@@ -38,6 +38,8 @@ constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {
 	initIOTimer(Timer::Timer5, DMA{DMA::Index1, DMA::Stream0, DMA::Channel6}),
 	initIOTimer(Timer::Timer4, DMA{DMA::Index1, DMA::Stream6, DMA::Channel2}),
 	initIOTimer(Timer::Timer15),
+	initIOTimer(Timer::Timer1, DMA{DMA::Index2, DMA::Stream5, DMA::Channel6}),
+
 };
 
 constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
@@ -53,6 +55,10 @@ constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
 	initIOTimerChannel(io_timers, {Timer::Timer4, Timer::Channel4}, {GPIO::PortD, GPIO::Pin15}),
 	initIOTimerChannel(io_timers, {Timer::Timer15, Timer::Channel1}, {GPIO::PortE, GPIO::Pin5}),
 	initIOTimerChannel(io_timers, {Timer::Timer15, Timer::Channel2}, {GPIO::PortE, GPIO::Pin6}),
+	initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel1}, {GPIO::PortA, GPIO::Pin8}),  // 原led
+	initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel2}, {GPIO::PortA, GPIO::Pin9}),  // 原Tx1
+	initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel3}, {GPIO::PortA, GPIO::Pin10}), // 原Rx1
+
 };
 
 constexpr io_timers_channel_mapping_t io_timers_channel_mapping =
@@ -60,9 +66,9 @@ constexpr io_timers_channel_mapping_t io_timers_channel_mapping =
 
 
 
-constexpr io_timers_t led_pwm_timers[MAX_LED_TIMERS] = {
-	initIOTimer(Timer::Timer1),
-};
+// constexpr io_timers_t led_pwm_timers[MAX_LED_TIMERS] = {
+// 	initIOTimer(Timer::Timer1),
+// };
 
 // #define CCER_C1_NUM_BITS   4
 // #define POLARITY(c)    (GTIM_CCER_CC1P << (((c)-1) * CCER_C1_NUM_BITS))

@@ -153,6 +153,7 @@ void ActuatorEffectivenessControlSurfaces::updateParams()
 
 bool ActuatorEffectivenessControlSurfaces::addActuators(Configuration &configuration)
 {
+	// PX4_INFO("count: %i ", _count); // 8
 	for (int i = 0; i < _count; i++) {
 		int actuator_idx = configuration.addActuator(ActuatorType::SERVOS, _params[i].torque, Vector3f{});
 

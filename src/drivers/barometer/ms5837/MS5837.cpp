@@ -59,6 +59,7 @@ int MS5837::init()
 {
 
 	int ret = I2C::init();
+	// PX4_INFO("here init");
 
 	if (ret != PX4_OK) {
 		DEVICE_DEBUG("I2C::init failed (%i)", ret);
@@ -114,6 +115,7 @@ int MS5837::_reset()
 {
 	unsigned old_retrycount = _retries;
 	uint8_t	cmd = MS5837_RESET;
+	// PX4_INFO("here reset");
 
 	/* bump the retry count */
 	_retries = 3;
@@ -160,6 +162,7 @@ int MS5837::read(unsigned offset, void *data, unsigned count)
 		uint32_t w;
 	} *cvt = (_cvt *)data;
 	uint8_t buf[3];
+	// PX4_INFO("here read");
 
 	/* read the most recent measurement */
 	uint8_t cmd = 0;
@@ -173,6 +176,8 @@ int MS5837::read(unsigned offset, void *data, unsigned count)
 		cvt->b[3] = 0;
 	}
 
+	// PX4_INFO("read cvt: %i %i %i %i", cvt->b[3], cvt->b[2], cvt->b[1], cvt->b[0]);
+	// PX4_INFO("buf: %li", cvt->w);
 	return ret;
 }
 
@@ -268,10 +273,12 @@ int MS5837::_collect()
 	uint32_t raw;
 
 	perf_begin(_sample_perf);
+	// PX4_INFO("here collect");
 
 	/* read the most recent measurement - read offset/size are hardcoded in the interface */
 	const hrt_abstime timestamp_sample = hrt_absolute_time();
 	int ret = read(0, (void *)&raw, 0);
+	// PX4_INFO("raw: %li", raw);
 
 	if (ret < 0) {
 		perf_count(_comms_errors);
@@ -284,9 +291,11 @@ int MS5837::_collect()
 
 		/* temperature offset (in ADC units) */
 		int32_t dT = (int32_t)raw - ((int32_t)_prom.s.c5_reference_temp << 8);
+		// PX4_INFO("c5_reference_temp: %i %li", _prom.s.c5_reference_temp, ((int32_t)_prom.s.c5_reference_temp << 8)); // c5_reference_temp: 27195 6961920
 
 		/* absolute temperature in centidegrees - note intermediate value is outside 32-bit range */
 		int32_t TEMP = 2000 + (int32_t)(((int64_t)dT * _prom.s.c6_temp_coeff_temp) >> 23);
+		// PX4_INFO("c6_temp_coeff_temp: %i %lli", _prom.s.c6_temp_coeff_temp, (((int64_t)dT * _prom.s.c6_temp_coeff_temp) >> 23)); // c6_temp_coeff_temp: 26205 504
 
 		/* base sensor scale/offset values */
 
@@ -332,14 +341,14 @@ int MS5837::_collect()
 
 	} else {
 		/* pressure calculation, result in Pa */
-		int32_t P = (((raw * _SENS) >> 21) - _OFF) >> 13;
-
+		int32_t P = ((((raw * _SENS) >> 21) - _OFF) >> 13) * 10;
 
 		// publish
 		sensor_baro_s sensor_baro{};
 		sensor_baro.timestamp_sample = timestamp_sample;
 		sensor_baro.device_id = get_device_id();
 		sensor_baro.pressure = P;
+		//sensor_baro.temperature = T;
 		sensor_baro.temperature = _last_temperature;
 		sensor_baro.error_count = perf_event_count(_comms_errors);
 		sensor_baro.timestamp = hrt_absolute_time();
@@ -348,6 +357,7 @@ int MS5837::_collect()
 
 	/* update the measurement state machine */
 	INCREMENT(_measure_phase, MS5837_MEASUREMENT_RATIO + 1);
+	// PX4_INFO("_measure_phase: %i", _measure_phase);
 
 	perf_end(_sample_perf);
 

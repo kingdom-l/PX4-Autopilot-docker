@@ -382,6 +382,7 @@ ControlAllocator::Run()
 	// Run allocator on torque changes
 	if (_vehicle_torque_setpoint_sub.update(&vehicle_torque_setpoint)) {
 		_torque_sp = matrix::Vector3f(vehicle_torque_setpoint.xyz);
+		// PX4_INFO("_torque_sp: %f %f %f", (double)_torque_sp(0), (double)_torque_sp(1), (double)_torque_sp(2));
 
 		do_update = true;
 		_timestamp_sample = vehicle_torque_setpoint.timestamp_sample;
@@ -398,6 +399,7 @@ ControlAllocator::Run()
 			_timestamp_sample = vehicle_thrust_setpoint.timestamp_sample;
 		}
 	}
+	// PX4_INFO("_thrust_torque_sp: %f %f %f %f %f %f", (double)_thrust_sp(0), (double)_thrust_sp(1), (double)_thrust_sp(2), (double)_torque_sp(0), (double)_torque_sp(1), (double)_torque_sp(2));
 
 	if (do_update) {
 		_last_run = now;
@@ -446,6 +448,14 @@ ControlAllocator::Run()
 			_control_allocation[i]->clipActuatorSetpoint();
 		}
 	}
+
+	// PX4_INFO("_actuator_sp: %f %f %f %f %f %f %f %f %f ", (double)_control_allocation[0]->_actuator_sp(0), (double)_control_allocation[0]->_actuator_sp(1), (double)_control_allocation[0]->_actuator_sp(2),
+	// 					(double)_control_allocation[0]->_actuator_sp(3), (double)_control_allocation[0]->_actuator_sp(4), (double)_control_allocation[0]->_actuator_sp(5),
+	// 					(double)_control_allocation[0]->_actuator_sp(6), (double)_control_allocation[0]->_actuator_sp(7), (double)_control_allocation[0]->_actuator_sp(8));
+	// PX4_INFO("%f %f %f %f %f %f %f", (double)_control_allocation[0]->_actuator_sp(9), (double)_control_allocation[0]->_actuator_sp(10), (double)_control_allocation[0]->_actuator_sp(11),
+	// 					(double)_control_allocation[0]->_actuator_sp(12), (double)_control_allocation[0]->_actuator_sp(13), (double)_control_allocation[0]->_actuator_sp(14),
+	// 					(double)_control_allocation[0]->_actuator_sp(15));
+
 
 	// Publish actuator setpoint and allocator status
 	publish_actuator_controls();
@@ -704,14 +714,18 @@ ControlAllocator::publish_actuator_controls()
 			actuator_servos.control[servos_idx] = PX4_ISFINITE(actuator_sp) ? actuator_sp : NAN;
 			++actuator_idx_matrix[selected_matrix];
 			++actuator_idx;
+
 		}
 
+		// PX4_INFO("_num_actuators[1]: %i , NUM_CONTROLS: %i", _num_actuators[1], actuator_servos_s::NUM_CONTROLS); // 8 8
 		for (int i = servos_idx; i < actuator_servos_s::NUM_CONTROLS; i++) {
 			actuator_servos.control[i] = NAN;
 		}
 
 		_actuator_servos_pub.publish(actuator_servos);
 	}
+	// PX4_INFO("actuator_servos: %f %f %f %f %f %f %f %f", (double)actuator_servos.control[0], (double)actuator_servos.control[1], (double)actuator_servos.control[2], (double)actuator_servos.control[3],
+	// 			(double)actuator_servos.control[4], (double)actuator_servos.control[5], (double)actuator_servos.control[6], (double)actuator_servos.control[7]);
 }
 
 void
