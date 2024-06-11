@@ -78,6 +78,7 @@
 #include <uORB/topics/vehicle_thrust_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/failure_detector_status.h>
+#include <uORB/topics/manual_control_setpoint.h>
 
 class ControlAllocator : public ModuleBase<ControlAllocator>, public ModuleParams, public px4::ScheduledWorkItem
 {
@@ -129,6 +130,8 @@ private:
 
 	void update_allocation_method(bool force);
 	bool update_effectiveness_source();
+
+	void update_allocate_hydro_state();
 
 	void update_effectiveness_matrix_if_needed(EffectivenessUpdateReason reason);
 
@@ -190,6 +193,18 @@ private:
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
 	uORB::Subscription _failure_detector_status_sub{ORB_ID(failure_detector_status)};
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
+
+	uint16_t _stopped_actuator_bitmasks[4];		//bitmask，用于指定不同状态下停止运行的执行器
+
+	enum class AllocaterHydroState : int32_t {
+		StopAll = 0,
+		WaterOnly = 1,
+		WaterAir = 2,
+		AirOnly = 3
+	};
+
+	AllocaterHydroState _allocate_hydro_state{AllocaterHydroState::WaterOnly};
 
 	matrix::Vector3f _torque_sp;
 	matrix::Vector3f _thrust_sp;

@@ -49,6 +49,21 @@ ControlAllocation::ControlAllocation()
 }
 
 void
+ControlAllocation::zero_stopped_actuators(uint16_t stopped_bitmask)
+{
+	if(stopped_bitmask)
+	{
+		for(int i=0; i<16; i++)
+		{
+			if(stopped_bitmask & (1 << i))
+			{
+				_actuator_sp(i) = 0;
+			}
+		}
+	}
+}
+
+void
 ControlAllocation::setEffectivenessMatrix(
 	const matrix::Matrix<float, ControlAllocation::NUM_AXES, ControlAllocation::NUM_ACTUATORS> &effectiveness,
 	const ActuatorVector &actuator_trim, const ActuatorVector &linearization_point, int num_actuators,

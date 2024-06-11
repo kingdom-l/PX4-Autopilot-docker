@@ -93,6 +93,8 @@ public:
 		THRUST_Z
 	};
 
+	void zero_stopped_actuators(uint16_t stopped_bitmask);
+
 	/**
 	 * Allocate control setpoint to actuators
 	 */
