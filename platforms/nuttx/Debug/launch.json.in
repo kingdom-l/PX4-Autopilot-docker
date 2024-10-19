@@ -1,6 +1,48 @@
 {
     "version": "0.2.0",
     "configurations": [
+        /*{
+            "name": "stlink-10.3 (@PX4_BOARD@)",
+            "gdbPath": "/opt/gcc-arm-none-eabi-10.3-2021.10/bin/arm-none-eabi-gdb",
+            "device": "@DEBUG_DEVICE@",
+            "svdFile": "@DEBUG_SVD_FILE_PATH@",
+            "executable": "${command:cmake.launchTargetPath}",
+            "request": "attach", //attach
+            "type": "cortex-debug",
+            "servertype": "stutil",
+            "cwd": "${workspaceFolder}",
+            "internalConsoleOptions": "openOnSessionStart",
+            "showDevDebugOutput": "raw",
+            "runToEntryPoint": "__start",
+            "preAttachCommands": [
+                "source ${workspaceFolder}/platforms/nuttx/Debug/PX4",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/NuttX",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/ARMv7M",
+                "set mem inaccessible-by-default off",
+                "set print pretty",
+            ],
+        },*/
+        {
+            "name": "stlink-v2 (@PX4_BOARD@)",
+            "gdbPath": "/opt/gcc-arm-none-eabi-10.3-2021.10/bin/arm-none-eabi-gdb",
+            "device": "@DEBUG_DEVICE@",
+            "svdFile": "@DEBUG_SVD_FILE_PATH@",
+            "executable": "${command:cmake.launchTargetPath}",
+            "request": "attach", //attach
+            "type": "cortex-debug",
+            "servertype": "stutil",
+            "cwd": "${workspaceFolder}",
+            "internalConsoleOptions": "openOnSessionStart",
+            "showDevDebugOutput": "raw",
+            "runToEntryPoint": "__start",
+            "preAttachCommands": [
+                "source ${workspaceFolder}/platforms/nuttx/Debug/PX4",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/NuttX",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/ARMv7M",
+                "set mem inaccessible-by-default off",
+                "set print pretty",
+            ],
+        },
         {
             "name": "jlink (@PX4_BOARD@)",
             "gdbPath": "@CMAKE_GDB@",

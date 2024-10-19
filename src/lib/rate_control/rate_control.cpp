@@ -37,6 +37,7 @@
 
 #include "rate_control.hpp"
 #include <px4_platform_common/defines.h>
+#include<px4_platform_common/log.h>
 
 using namespace matrix;
 
@@ -75,11 +76,14 @@ Vector3f RateControl::update(const Vector3f &rate, const Vector3f &rate_sp, cons
 	Vector3f rate_error = rate_sp - rate;
 
 	// PID control with feed forward
-	const Vector3f torque = _gain_p.emult(rate_error) + _rate_int - _gain_d.emult(angular_accel) + _gain_ff.emult(rate_sp);
+	const Vector3f torque = _gain_p.emult(rate_error) + _rate_int - _gain_d.emult(angular_accel) + _gain_ff.emult(rate_sp); //此处的_gain_ff为0向量
+	// PX4_INFO("_gain_p: %f, %f, %f, _gain_d: %f, %f, %f", (double)_gain_p(0), (double)_gain_p(1), (double)_gain_p(2), (double)_gain_d(0), (double)_gain_d(1), (double)_gain_d(2));
+	// PX4_INFO("rate torque: %f, %f, %f", (double)torque(0), (double)torque(1), (double)torque(2));
 
 	// update integral only if we are not landed
 	if (!landed) {
 		updateIntegral(rate_error, dt);
+		// PX4_INFO("_rate_int: %f, %f, %f", (double)_rate_int(0), (double)_rate_int(1), (double)_rate_int(2));
 	}
 
 	return torque;

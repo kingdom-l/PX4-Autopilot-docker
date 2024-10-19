@@ -277,7 +277,9 @@ void TECSControl::update(const float dt, const Setpoint &setpoint, const Input &
 	AltitudePitchControl control_setpoint;
 
 	control_setpoint.tas_setpoint = setpoint.tas_setpoint;
-	control_setpoint.tas_rate_setpoint = _calcAirspeedControlOutput(setpoint, input, param, flag);
+	control_setpoint.tas_rate_setpoint = _calcAirspeedControlOutput(setpoint, input, param, flag); // P(比例)
+
+	// printf("altitude_rate_setpoint_direct: %f ", (double)setpoint.altitude_rate_setpoint_direct);
 
 	if (PX4_ISFINITE(setpoint.altitude_rate_setpoint_direct)) {
 		// direct height rate control
@@ -285,7 +287,7 @@ void TECSControl::update(const float dt, const Setpoint &setpoint, const Input &
 
 	} else {
 		// altitude is locked, go through altitude outer loop
-		control_setpoint.altitude_rate_setpoint = _calcAltitudeControlOutput(setpoint, input, param);
+		control_setpoint.altitude_rate_setpoint = _calcAltitudeControlOutput(setpoint, input, param); // P(比例)+FF(前馈)
 	}
 
 	SpecificEnergyRates specific_energy_rate{_calcSpecificEnergyRates(control_setpoint, input)};
@@ -318,6 +320,8 @@ float TECSControl::_calcAirspeedControlOutput(const Setpoint &setpoint, const In
 	float airspeed_rate_output{0.0f};
 
 	const STERateLimit limit{_calculateTotalEnergyRateLimit(param)};
+
+	// printf("max_rate: %f, %f  ", (double)param.min_sink_rate, (double)param.max_climb_rate); // min_sink_rate: 2.043394, max_climb_rate: 5.000000
 
 	// calculate the demanded true airspeed rate of change based on first order response of true airspeed error
 	// if airspeed measurement is not enabled then always set the rate setpoint to zero in order to avoid constant rate setpoints
@@ -360,6 +364,8 @@ TECSControl::SpecificEnergyRates TECSControl::_calcSpecificEnergyRates(const Alt
 	specific_energy_rates.spe_rate.estimate = input.altitude_rate * CONSTANTS_ONE_G; // potential energy rate of change
 	specific_energy_rates.ske_rate.estimate = input.tas * input.tas_rate;// kinetic energy rate of change
 
+	// printf("tas: %f %f ", (double)input.tas, (double)input.tas_rate); // tas: 15.0 tas_rate: 0.0
+
 	return specific_energy_rates;
 }
 
@@ -372,18 +378,20 @@ void TECSControl::_detectUnderspeed(const Input &input, const Param &param, cons
 
 	// this is the expected (something like standard) deviation from the airspeed setpoint that we allow the airspeed
 	// to vary in before ramping in underspeed mitigation
-	const float tas_error_bound = param.tas_error_percentage * param.equivalent_airspeed_trim;
+	const float tas_error_bound = param.tas_error_percentage * param.equivalent_airspeed_trim; // 2.25  percentage:0.15  trim:15
 
 	// this is the soft boundary where underspeed mitigation is ramped in
 	// NOTE: it's currently the same as the error bound, but separated here to indicate these values do not in general
 	// need to be the same
 	const float tas_underspeed_soft_bound = param.tas_error_percentage * param.equivalent_airspeed_trim;
 
-	const float tas_fully_undersped = math::max(param.tas_min - tas_error_bound - tas_underspeed_soft_bound, 0.0f);
-	const float tas_starting_to_underspeed = math::max(param.tas_min - tas_error_bound, tas_fully_undersped);
+	const float tas_fully_undersped = math::max(param.tas_min - tas_error_bound - tas_underspeed_soft_bound, 0.0f); // tas_fully_undersped:5.5  min:10
+	const float tas_starting_to_underspeed = math::max(param.tas_min - tas_error_bound, tas_fully_undersped);  // tas_starting_to_underspeed: 7.5
 
 	_ratio_undersped = 1.0f - math::constrain((input.tas - tas_fully_undersped) /
 			   math::max(tas_starting_to_underspeed - tas_fully_undersped, FLT_EPSILON), 0.0f, 1.0f);
+
+	// printf("tas_error: %f %f %f ", (double)param.tas_error_percentage, (double)param.equivalent_airspeed_trim, (double)param.tas_min);
 }
 
 TECSControl::SpecificEnergyWeighting TECSControl::_updateSpeedAltitudeWeights(const Param &param, const Flag &flag)
@@ -454,6 +462,9 @@ TECSControl::ControlValues TECSControl::_calcPitchControlSebRate(const SpecificE
 	seb_rate.estimate = (specific_energy_rates.spe_rate.estimate * weight.spe_weighting) -
 			    (specific_energy_rates.ske_rate.estimate * weight.ske_weighting);
 
+	// printf("seb_rate: %f %f ", (double)specific_energy_rates.spe_rate.setpoint, (double)specific_energy_rates.ske_rate.setpoint);
+	// printf("%f %f ", (double)specific_energy_rates.spe_rate.estimate, (double)specific_energy_rates.ske_rate.estimate);
+
 	return seb_rate;
 }
 
@@ -518,10 +529,11 @@ void TECSControl::_calcThrottleControl(float dt, const SpecificEnergyRates &spec
 
 	// Update STE rate estimate LP filter
 	const float STE_rate_estimate_raw = specific_energy_rates.spe_rate.estimate + specific_energy_rates.ske_rate.estimate;
-	_ste_rate_estimate_filter.setParameters(dt, param.ste_rate_time_const);
+	_ste_rate_estimate_filter.setParameters(dt, param.ste_rate_time_const); // ste_rate_time_const: 0.4
 	_ste_rate_estimate_filter.update(STE_rate_estimate_raw);
 	ControlValues ste_rate{_calcThrottleControlSteRate(limit, specific_energy_rates, param)};
 	float throttle_setpoint{param.throttle_min};
+	// printf("throttle_setpoint: %f %f ", (double)throttle_setpoint, (double)param.throttle_min); // 0 0
 
 	if (1.f - param.fast_descend < FLT_EPSILON) {
 		// During fast descend, we control airspeed over the pitch control loop and give minimal thrust.
@@ -604,6 +616,7 @@ float TECSControl::_calcThrottleControlOutput(const STERateLimit &limit, const C
 {
 	// Calculate gain scaler from specific energy rate error to throttle
 	const float STE_rate_to_throttle = 1.0f / (limit.STE_rate_max - limit.STE_rate_min);
+	// printf("STE_rate_to_throttle: %f ", (double)STE_rate_to_throttle);
 
 	// Calculate a predicted throttle from the demanded rate of change of energy, using the cruise throttle
 	// as the starting point. Assume:
@@ -618,9 +631,11 @@ float TECSControl::_calcThrottleControlOutput(const STERateLimit &limit, const C
 
 	float throttle_predicted = 0.0f;
 
+	// printf("setpoint: %f ", (double)ste_rate.setpoint);
 	if (ste_rate.setpoint >= FLT_EPSILON) {
 		// throttle is between trim and maximum
 		throttle_predicted = param.throttle_trim + ste_rate.setpoint * throttle_above_trim_per_ste_rate;
+		// printf("pre: %f %f %f %f ", (double)throttle_predicted, (double)param.throttle_trim, (double)throttle_above_trim_per_ste_rate, (double)throttle_below_trim_per_ste_rate);
 
 	} else {
 		// throttle is between trim and minimum
@@ -708,6 +723,7 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 
 	initControlParams(target_climbrate, target_sinkrate, eas_to_tas, pitch_limit_max, pitch_limit_min, throttle_min,
 			  throttle_setpoint_max, throttle_trim);
+	// printf("equivalent_airspeed: %f ", (double)equivalent_airspeed);
 
 	if (dt < DT_MIN) {
 		// Update intervall too small, do not update. Assume constant states/output in this case.
@@ -722,11 +738,13 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 		/* Check if we want to fast descend. On fast descend, we set the throttle to min, and use the altitude control
 		loop to control the speed to the maximum airspeed. */
 		_setFastDescend(hgt_setpoint, altitude);
-		_control_param.fast_descend = _fast_descend;
+		_control_param.fast_descend = _fast_descend; // value:[0, 1]
+		// printf("_fast_descend: %f ", (double)_fast_descend); // 0
 
 		// Update airspeedfilter submodule
 		const TECSAirspeedFilter::Input airspeed_input{ .equivalent_airspeed = equivalent_airspeed,
 				.equivalent_airspeed_rate = speed_deriv_forward / eas_to_tas};
+		// printf("sdf: %f, ett: %f ", (double)speed_deriv_forward, (double)eas_to_tas); // sdf:0 e2t:1
 
 		_airspeed_filter.update(dt, airspeed_input, _airspeed_filter_param, _control_flag.airspeed_enabled);
 
@@ -771,6 +789,7 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 
 void TECS::_setFastDescend(const float alt_setpoint, const float alt)
 {
+	// printf("fast_des_alt_err: %f ", (double)_fast_descend_alt_err); // -1
 	if (_control_flag.airspeed_enabled && (_fast_descend_alt_err > FLT_EPSILON)
 	    && ((alt_setpoint + _fast_descend_alt_err) < alt)) {
 		_fast_descend = 1.f;

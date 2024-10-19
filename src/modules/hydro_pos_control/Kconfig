@@ -1,0 +1,7 @@
+menuconfig MODULES_HYDRO_POS_CONTROL
+	bool "hydro_pos_control"
+	default n
+	---help---
+		Enable support for hydro_pos_control
+
+

@@ -40,6 +40,7 @@
  */
 
 #include "ControlAllocationPseudoInverse.hpp"
+#include <px4_platform_common/log.h> // dummy
 
 void
 ControlAllocationPseudoInverse::setEffectivenessMatrix(
@@ -56,6 +57,7 @@ ControlAllocationPseudoInverse::setEffectivenessMatrix(
 void
 ControlAllocationPseudoInverse::updatePseudoInverse()
 {
+
 	if (_mix_update_needed) {
 		matrix::geninv(_effectiveness, _mix);
 

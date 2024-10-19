@@ -39,3 +39,8 @@ mode_control start
 hydro_att_control start
 hydro_rate_control start
 
+#
+# Start mavlink debug.
+#
+
+mavdebug start

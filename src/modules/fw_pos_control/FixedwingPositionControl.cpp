@@ -939,6 +939,7 @@ void
 FixedwingPositionControl::control_auto_fixed_bank_alt_hold(const float control_interval)
 {
 	// only control altitude and airspeed ("fixed-bank loiter")
+	// printf("current_altitude: %f \n", (double)_current_altitude);
 
 	tecs_update_pitch_throttle(control_interval,
 				   _current_altitude,
@@ -2306,7 +2307,7 @@ FixedwingPositionControl::Run()
 			_reference_altitude = 0.f;
 		}
 
-		_current_altitude = -_local_pos.z + _reference_altitude; // Altitude AMSL in meters
+		_current_altitude = -_local_pos.z + _reference_altitude; // Altitude AMSL(above mean sea level) in meters
 
 		// handle estimator reset events. we only adjust setpoins for manual modes
 		if (_control_mode.flag_control_manual_enabled) {
@@ -2492,6 +2493,9 @@ FixedwingPositionControl::Run()
 		int8_t old_landing_gear_position = _new_landing_gear_position;
 		_new_landing_gear_position = landing_gear_s::GEAR_KEEP; // is overwritten in Takeoff and Land
 
+		// _control_mode_current = FW_POSCTRL_MODE_AUTO_ALTITUDE; // dummy
+		// printf("here start");
+
 		switch (_control_mode_current) {
 		case FW_POSCTRL_MODE_AUTO: {
 				control_auto(control_interval, curr_pos, ground_speed, _pos_sp_triplet.previous, _pos_sp_triplet.current,
@@ -2667,6 +2671,7 @@ FixedwingPositionControl::tecs_update_pitch_throttle(const float control_interva
 	}
 
 	/* update TECS vehicle state estimates */
+	// printf("t_min: %f, t_max: %f, a_sp: %f, air_den: %f ", (double)throttle_min, (double)throttle_max, (double)airspeed_sp, (double)_air_density);
 	const float throttle_trim_compensated = _performance_model.getTrimThrottle(throttle_min,
 						throttle_max, airspeed_sp, _air_density);
 
@@ -2676,6 +2681,7 @@ FixedwingPositionControl::tecs_update_pitch_throttle(const float control_interva
 	// HOTFIX: the airspeed rate estimate using acceleration in body-forward direction has shown to lead to high biases
 	// when flying tight turns. It's in this case much safer to just set the estimated airspeed rate to 0.
 	const float airspeed_rate_estimate = 0.f;
+	// printf("airspeed: %f %f %f ", (double)_airspeed_eas, (double)_eas2tas, (double)airspeed_rate_estimate);
 
 	_tecs.update(_pitch - radians(_param_fw_psp_off.get()),
 		     _current_altitude,
