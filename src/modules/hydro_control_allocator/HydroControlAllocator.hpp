@@ -32,3 +32,95 @@
  ****************************************************************************/
 
 #pragma once
+
+#include <lib/matrix/matrix/math.hpp>
+#include <uORB/Publication.hpp>
+#include <uORB/SubscriptionCallback.hpp>
+#include <uORB/SubscriptionInterval.hpp>
+
+#include <uORB/topics/parameter_update.h>
+#include <px4_platform_common/module.h>
+#include <px4_platform_common/module_params.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+
+#include <uORB/topics/vehicle_torque_setpoint.h>
+#include <uORB/topics/vehicle_thrust_setpoint.h>
+#include <uORB/topics/actuator_motors.h>
+#include <uORB/topics/actuator_servos.h>
+#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/vehicle_attitude.h>
+
+using namespace matrix;
+
+class HydroControlAllocator : public ModuleBase<HydroControlAllocator>, public ModuleParams, public px4::ScheduledWorkItem
+{
+public:
+
+	HydroControlAllocator();
+	~HydroControlAllocator() override;
+
+	/** @see ModuleBase */
+	static int task_spawn(int argc, char *argv[]);
+
+	/** @see ModuleBase */
+	static int custom_command(int argc, char *argv[]);
+
+	/** @see ModuleBase */
+	static int print_usage(const char *reason = nullptr);
+
+	/** @see ModuleBase::print_status() */
+	int print_status() override;
+
+	void Run() override;
+
+	bool init();
+
+private:
+	struct StructureInfo{
+		float x2;
+		float y2;
+		float z2;
+		float yT;
+		float yh;
+		float xe;
+	};
+	StructureInfo _structure_info;
+	matrix::Matrix<float, 5, 6> effectiveness;
+
+	struct NfParams{
+		float Cl;
+		float Cl0;
+		float Cd;
+		float Cd0;
+		float S_wing;
+		float Fx;
+		float Fz;
+	};
+	NfParams _nf_params;
+
+	void optim(float x_opt[2], NfParams p);
+	SquareMatrix<float, 2> J_func(Vector2f x, NfParams p);
+	Vector2f func(Vector2f x, NfParams p);
+
+	perf_counter_t	_loop_perf;			/**< loop duration performance counter */
+
+	ParamHandles _param_handles{};
+	Params _params{};
+
+	DEFINE_PARAMETERS(
+		(ParamFloat<px4::params::HY_ALT_SPEED>) _param_hy_alt_speed,
+		(ParamInt<px4::params::HY_SPEED_SELECT>) _param_hy_speed_select,
+		(ParamFloat<px4::params::HY_RT_MAX_THRUST>) _param_hy_rt_max_thrust,
+		(ParamFloat<px4::params::HY_WING_RCL>) _param_hy_wing_r_cl,
+		(ParamFloat<px4::params::HY_WING_RCL0>) _param_hy_wing_r_cl0,
+		(ParamFloat<px4::params::HY_WING_RCD>) _param_hy_wing_r_cd,
+		(ParamFloat<px4::params::HY_WING_RCD0>) _param_hy_wing_r_cd0,
+		(ParamFloat<px4::params::HY_HTAIL_CL>) _param_hy_htail_cl,
+		(ParamFloat<px4::params::HY_HTAIL_CL0>) _param_hy_htail_cl0,
+		(ParamFloat<px4::params::HY_HTAIL_CD>) _param_hy_htail_cd,
+		(ParamFloat<px4::params::HY_HTAIL_CD0>) _param_hy_htail_cd0,
+		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max,
+
+	)
+
+};
