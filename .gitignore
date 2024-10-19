@@ -108,3 +108,7 @@ src/systemcmds/topic_listener/listener_generated.cpp
 
 # colcon
 log/
+.devcontainer/arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+.devcontainer/Dockerfile
+src/modules/mavlink/mavlink
+.devcontainer/Dockerfile
