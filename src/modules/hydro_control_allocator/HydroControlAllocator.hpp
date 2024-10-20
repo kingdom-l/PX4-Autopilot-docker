@@ -111,9 +111,12 @@ private:
 		float Fx;
 		float Fz;
 	};
-	NfParams _nf_params;
+	float _Va2;
+	NfParams _nf_params_hy_wr;
+	NfParams _nf_params_hy_wl;
+	NfParams _nf_params_hy_htail;
 
-	void optim(float x_opt[2], NfParams p);
+	Vector2f optim(float x_opt[2], NfParams p);
 	SquareMatrix<float, 2> J_func(Vector2f x, NfParams p);
 	Vector2f func(Vector2f x, NfParams p);
 
@@ -121,21 +124,24 @@ private:
 
 	perf_counter_t	_loop_perf;			/**< loop duration performance counter */
 
-	ParamHandles _param_handles{};
-	Params _params{};
+	hrt_abstime _last_run{0};
+	hrt_abstime _timestamp_sample{0};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_AIRAPEED_TRIM>) _param_hy_airspeed_trim,
+		(ParamFloat<px4::params::HY_ALPHA_TRIM>) _param_hy_alpha_trim,
 		(ParamInt<px4::params::HY_SPEED_SELECT>) _param_hy_speed_select,
 		(ParamFloat<px4::params::HY_MAX_THRUST>) _param_hy_max_thrust,
-		(ParamFloat<px4::params::HY_WING_RCL>) _param_hy_wing_r_cl,
-		(ParamFloat<px4::params::HY_WING_RCL0>) _param_hy_wing_r_cl0,
-		(ParamFloat<px4::params::HY_WING_RCD>) _param_hy_wing_r_cd,
-		(ParamFloat<px4::params::HY_WING_RCD0>) _param_hy_wing_r_cd0,
+		(ParamFloat<px4::params::HY_WING_R_CL>) _param_hy_wing_r_cl,
+		(ParamFloat<px4::params::HY_WING_R_CL0>) _param_hy_wing_r_cl0,
+		(ParamFloat<px4::params::HY_WING_R_CD>) _param_hy_wing_r_cd,
+		(ParamFloat<px4::params::HY_WING_R_CD0>) _param_hy_wing_r_cd0,
+		(ParamFloat<px4::params::HY_WING_R_AREA>) _param_hy_wing_r_area,
 		(ParamFloat<px4::params::HY_HTAIL_CL>) _param_hy_htail_cl,
 		(ParamFloat<px4::params::HY_HTAIL_CL0>) _param_hy_htail_cl0,
 		(ParamFloat<px4::params::HY_HTAIL_CD>) _param_hy_htail_cd,
 		(ParamFloat<px4::params::HY_HTAIL_CD0>) _param_hy_htail_cd0,
+		(ParamFloat<px4::params::HY_HTAIL_AREA>) _param_hy_htail_area,
 		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max,
 
 	)

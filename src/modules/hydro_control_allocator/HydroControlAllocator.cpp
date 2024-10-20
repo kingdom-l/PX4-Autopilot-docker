@@ -40,6 +40,7 @@
  */
 #include "HydroControlAllocator.hpp"
 
+using namespace matrix;
 
 HydroControlAllocator::HydroControlAllocator() :
 	ModuleParams(nullptr),
@@ -82,22 +83,77 @@ HydroAllocator::parameters_update()
 			    {  _st_info.z2,                _st_info.x2,             _st_info.z2,             _st_info.x2,             0, _st_info.xe},
 			    {-(_st_info.y2+_st_info.yT),           0,        -(_st_info.y2-_st_info.yT),            0,                0,         0}};
 	matrix::geninv(_hy_effectiveness, _hy_mix);
+	_nf_params_hy_wr.Cl = _param_hy_wing_r_cl.get();
+	_nf_params_hy_wr.Cl0 = _param_hy_wing_r_cl0.get();
+	_nf_params_hy_wr.Cd = _param_hy_wing_r_cd.get();
+	_nf_params_hy_wr.Cd0 = _param_hy_wing_r_cd0.get();
+	_nf_params_hy_wr.S_wing = _param_hy_wing_r_area.get();
 
-}
+	_nf_params_hy_wl.Cl = _param_hy_wing_r_cl.get();
+	_nf_params_hy_wl.Cl0 = _param_hy_wing_r_cl0.get();
+	_nf_params_hy_wl.Cd = _param_hy_wing_r_cd.get();
+	_nf_params_hy_wl.Cd0 = _param_hy_wing_r_cd0.get();
+	_nf_params_hy_wl.S_wing = _param_hy_wing_r_area.get();
 
-void HydroControlAllocator::optim(float x_opt[2], NfParams p)
-{
-
+	_nf_params_hy_htail.Cl = _param_hy_htail_cl.get();
+	_nf_params_hy_htail.Cl0 = _param_hy_htail_cl0.get();
+	_nf_params_hy_htail.Cd = _param_hy_htail_cd.get();
+	_nf_params_hy_htail.Cd0 = _param_hy_htail_cd0.get();
+	_nf_params_hy_htail.S_wing = _param_hy_htail_area.get();
 }
 
 SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x, NfParams p)
 {
+	float gamma = x_opt[0];
+	float T = x_opt[1];
+	SquareMatrix<float, 2> J;
 
+	J(0, 0) = T * sin(gamma) - 0.5 * rho * p.S_wing * _Va2 * p.Cl * sin(_alpha) + 0.5 * rho * p.S_wing * _Va2 * p.Cd * cos(_alpha);
+	J(0, 1) = -cos(gamma);
+	J(1, 0) =-T * cos(gamma) - 0.5 * rho * p.S_wing * _Va2 * p.Cl * cos(_alpha) - 0.5 * rho * p.S_wing * _Va2 * p.Cd * sin(_alpha);
+	J(1, 1) = -sin(gamma);
+
+	return J;
 }
 
 Vector2f HydroControlAllocator::func(Vector2f x, NfParams p)
 {
+	float gamma = x_opt[0];
+	float T = x_opt[1];
+	Vector2f out;
+	out(0) = p.Fx - T * cos(gamma) - 0.5 * rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sin(_alpha) + 0.5 * rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cos(_alpha);
+	out(1) = p.Fz - T * sin(gamma) - 0.5 * rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cos(_alpha) - 0.5 * rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sin(_alpha);
+	return out;
+}
 
+void HydroControlAllocator::optim(float x_opt[2], NfParams p)
+{
+	Vector2f x(x_opt);
+	Vector2f func_out;
+	SquareMatrix<float, 2> J;
+	SquareMatrix<float, 2> J_inv;
+	Vector2f delta_x;
+	Vector2f x_new;
+
+	for(int i = 0; i < 10; i++){
+		J = J_func(x, p);
+		func_out = func(x, p);
+		inv(J, J_inv);
+
+		delta_x = - J_inv * func_out;
+
+		if(delta_x.norm_squared() < (float)1e-6)
+			break;
+
+		x_new = x + delta_x;
+
+		x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
+		// float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_rt_max_thrust.get();
+		x_new(1) = math::constrain(x_new(1), 0.f, _param_hy_max_thrust.get());
+
+		x = x_new;
+	}
+	x.copyTo(x_opt);
 }
 
 void HydroControlAllocator::Run()
@@ -110,6 +166,10 @@ void HydroControlAllocator::Run()
 	}
 
 	perf_begin(_loop_perf);
+
+	// Guard against too small (< 0.2ms) and too large (> 20ms) dt's.
+	const hrt_abstime now = hrt_absolute_time();
+	const float dt = math::constrain(((now - _last_run) / 1e6f), 0.0002f, 0.02f);
 
 	bool do_update = false;
 	vehicle_torque_setpoint_s hydro_torque_setpoint;
@@ -137,10 +197,36 @@ void HydroControlAllocator::Run()
 	}
 
 	if(do_update){
+		_last_run = now;
+
+		if(_param_hy_speed_select.get() == 0)//使用替代速度
+		{
+			_Va2 = _param_hy_airspeed_trim.get() * _param_hy_airspeed_trim.get();
+			_alpha = _param_hy_alpha_trim.get();
+		}
+		else
+		{
+			// 订阅空速信息计算Va2和攻角
+			_Va2 = _param_hy_airspeed_trim.get(); //TODO 暂时不支持真实速度，都用替代速度
+			_alpha = _param_hy_alpha_trim.get();
+		}
+
 		_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
 		Matrix::Vector<float, 6> force_sp = _hy_mix * _wrench_sp;
 
+		_nf_params_hy_wr.Fx = force_sp(0);
+		_nf_params_hy_wr.Fz = force_sp(1);
+		_nf_params_hy_wl.Fx = force_sp(2);
+		_nf_params_hy_wl.Fz = force_sp(3);
+		_nf_params_hy_htail.Fx = force_sp(4);
+		_nf_params_hy_htail.Fz = force_sp(5);
 
+		float x_opt[3][2] = {{0, _nf_params_hy_wr.Fx/2},
+			       {0, _nf_params_hy_wl.Fx/2},
+			       {0, 0}}; // 初值取得可能有问题
+		optim(x_opt[0], _nf_params_hy_wr);
+		optim(x_opt[1], _nf_params_hy_wl);
+		optim(x_opt[2], _nf_params_hy_htail); // 需要修改
 	}
 
 	perf_end(_loop_perf);

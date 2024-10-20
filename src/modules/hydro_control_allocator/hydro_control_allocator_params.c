@@ -53,6 +53,20 @@
 PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 1.0);
 
 /**
+ * Hydro Angle of Attack Trim
+ *
+ * This defines AoA trim of hydro in water
+ *
+ * @unit m/s
+ * @min 0.2
+ * @max 10.0
+ * @decimal 2
+ * @increment 0.5
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_ALPHA_TRIM, 0.0);
+
+/**
  * Hydro Airspeed Source Selection
  *
  * Set this to 0 if there is no airspeed measurement.
@@ -90,7 +104,7 @@ PARAM_DEFINE_FLOAT(HY_MAX_THRUST, 2);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_RCL, 0.14);
+PARAM_DEFINE_FLOAT(HY_WING_R_CL, 0.14);
 
 /**
  * Right hydrofoil zero-lift coefficient
@@ -103,7 +117,7 @@ PARAM_DEFINE_FLOAT(HY_WING_RCL, 0.14);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_RCL0, 0);
+PARAM_DEFINE_FLOAT(HY_WING_R_CL0, 0);
 
 /**
  * Right hydrofoil drag coefficient
@@ -116,7 +130,7 @@ PARAM_DEFINE_FLOAT(HY_WING_RCL0, 0);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_RCD, 0.0034);
+PARAM_DEFINE_FLOAT(HY_WING_R_CD, 0.0034);
 
 /**
  * Right hydrofoil zero-lift drag coefficient
@@ -129,7 +143,20 @@ PARAM_DEFINE_FLOAT(HY_WING_RCD, 0.0034);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_RCD0, 0.0048);
+PARAM_DEFINE_FLOAT(HY_WING_R_CD0, 0.0048);
+
+/**
+ * Wing area of  Right hydrofoil
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 1
+ * @decimal 2
+ * @increment 0.0001
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_WING_R_AREA, 0.015);
 
 /**
  * Horizontal tail lift coefficient
@@ -182,6 +209,19 @@ PARAM_DEFINE_FLOAT(HY_HTAIL_CD, 0.0048);
  * @group Hydro Control Allocator
  */
 PARAM_DEFINE_FLOAT(HY_HTAIL_CD0, 0.0048);
+
+/**
+ * Wing area of Horizontal tail
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 1
+ * @decimal 2
+ * @increment 0.0001
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_HTAIL_AREA, 0.02);
 
 /**
  * Deflection angle of the control surface
