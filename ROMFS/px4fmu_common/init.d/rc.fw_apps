@@ -9,6 +9,7 @@
 # Start Control Allocator
 #
 control_allocator start
+hydro_control_allocator start
 
 #
 # Start attitude controller.
