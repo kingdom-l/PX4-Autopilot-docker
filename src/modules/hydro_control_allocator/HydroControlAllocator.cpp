@@ -88,30 +88,40 @@ HydroAllocator::parameters_update()
 	_nf_params_hy_wr.Cd = _param_hy_wing_r_cd.get();
 	_nf_params_hy_wr.Cd0 = _param_hy_wing_r_cd0.get();
 	_nf_params_hy_wr.S_wing = _param_hy_wing_r_area.get();
+	_nf_params_hy_wr.with_thrust = true;
 
 	_nf_params_hy_wl.Cl = _param_hy_wing_r_cl.get();
 	_nf_params_hy_wl.Cl0 = _param_hy_wing_r_cl0.get();
 	_nf_params_hy_wl.Cd = _param_hy_wing_r_cd.get();
 	_nf_params_hy_wl.Cd0 = _param_hy_wing_r_cd0.get();
 	_nf_params_hy_wl.S_wing = _param_hy_wing_r_area.get();
+	_nf_params_hy_wl.with_thrust = true;
 
 	_nf_params_hy_htail.Cl = _param_hy_htail_cl.get();
 	_nf_params_hy_htail.Cl0 = _param_hy_htail_cl0.get();
 	_nf_params_hy_htail.Cd = _param_hy_htail_cd.get();
 	_nf_params_hy_htail.Cd0 = _param_hy_htail_cd0.get();
 	_nf_params_hy_htail.S_wing = _param_hy_htail_area.get();
+	_nf_params_hy_htail.with_thrust = false;
 }
 
 SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x, NfParams p)
 {
-	float gamma = x_opt[0];
-	float T = x_opt[1];
 	SquareMatrix<float, 2> J;
+	if(p.with_thrust)
+		float gamma = x_opt[0];
+		float T = x_opt[1];
 
-	J(0, 0) = T * sin(gamma) - 0.5 * rho * p.S_wing * _Va2 * p.Cl * sin(_alpha) + 0.5 * rho * p.S_wing * _Va2 * p.Cd * cos(_alpha);
-	J(0, 1) = -cos(gamma);
-	J(1, 0) =-T * cos(gamma) - 0.5 * rho * p.S_wing * _Va2 * p.Cl * cos(_alpha) - 0.5 * rho * p.S_wing * _Va2 * p.Cd * sin(_alpha);
-	J(1, 1) = -sin(gamma);
+		J(0, 0) = T * sin(gamma) - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * sin(_alpha) + 0.5 * _rho * p.S_wing * _Va2 * p.Cd * cos(_alpha);
+		J(0, 1) = -cos(gamma);
+		J(1, 0) =-T * cos(gamma) - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * cos(_alpha) - 0.5 * _rho * p.S_wing * _Va2 * p.Cd * sin(_alpha);
+		J(1, 1) = -sin(gamma);
+	else{
+		J(0, 0) = - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * sin(_alpha) + 0.5 * _rho * p.S_wing * _Va2 * p.Cd * cos(_alpha);
+		J(0, 1) = 0;
+		J(1, 0) = - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * cos(_alpha) - 0.5 * _rho * p.S_wing * _Va2 * p.Cd * sin(_alpha);
+		J(1, 1) = 0;
+	}
 
 	return J;
 }
@@ -121,8 +131,8 @@ Vector2f HydroControlAllocator::func(Vector2f x, NfParams p)
 	float gamma = x_opt[0];
 	float T = x_opt[1];
 	Vector2f out;
-	out(0) = p.Fx - T * cos(gamma) - 0.5 * rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sin(_alpha) + 0.5 * rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cos(_alpha);
-	out(1) = p.Fz - T * sin(gamma) - 0.5 * rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cos(_alpha) - 0.5 * rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sin(_alpha);
+	out(0) = p.Fx - T * cos(gamma) - 0.5 * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sin(_alpha) + 0.5 * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cos(_alpha);
+	out(1) = p.Fz - T * sin(gamma) - 0.5 * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cos(_alpha) - 0.5 * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sin(_alpha);
 	return out;
 }
 
@@ -131,27 +141,46 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 	Vector2f x(x_opt);
 	Vector2f func_out;
 	SquareMatrix<float, 2> J;
-	SquareMatrix<float, 2> J_inv;
-	Vector2f delta_x;
-	Vector2f x_new;
 
-	for(int i = 0; i < 10; i++){
-		J = J_func(x, p);
-		func_out = func(x, p);
-		inv(J, J_inv);
+	if(p.with_thrust){
 
-		delta_x = - J_inv * func_out;
+		SquareMatrix<float, 2> J_inv;
+		Vector2f delta_x;
+		Vector2f x_new;
 
-		if(delta_x.norm_squared() < (float)1e-6)
-			break;
+		for(int i = 0; i < 10; i++){
+			J = J_func(x, p);
+			func_out = func(x, p);
+			inv(J, J_inv);
 
-		x_new = x + delta_x;
+			delta_x = - J_inv * func_out;
 
-		x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
-		// float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_rt_max_thrust.get();
-		x_new(1) = math::constrain(x_new(1), 0.f, _param_hy_max_thrust.get());
+			if(delta_x.norm_squared() < (float)1e-6)
+				break;
 
-		x = x_new;
+			x_new = x + delta_x;
+
+			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
+			// float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_rt_max_thrust.get();
+			x_new(1) = math::constrain(x_new(1), 0.f, _param_hy_max_thrust.get());
+
+			x = x_new;
+		}
+	}
+	else{
+		Vector delta_x;
+		for(int i = 0; i < 10; i++){
+
+			J = J_func(x, p);
+			func_out = func(x, p);
+			delta_x = -0.2 * 1/J(0,0) * func_out(0) - 0.8 * 1/J(1,0) * func_out(1);
+			if(delta_x.norm_squared() < (float)1e-6)
+				break;
+
+			x(0) = x(0) + delta_x;
+
+			x(0) = math::constrain(x(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
+		}
 	}
 	x.copyTo(x_opt);
 }

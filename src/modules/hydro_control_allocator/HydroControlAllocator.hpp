@@ -96,6 +96,7 @@ private:
 		float yT;
 		float yh;
 		float xe;
+		bool with_thrust;
 	};
 	StructureInfo _st_info;
 	matrix::Matrix<float, 5, 6> _hy_effectiveness;
@@ -112,6 +113,7 @@ private:
 		float Fz;
 	};
 	float _Va2;
+	float _rho = 1e3;
 	NfParams _nf_params_hy_wr;
 	NfParams _nf_params_hy_wl;
 	NfParams _nf_params_hy_htail;
@@ -142,7 +144,7 @@ private:
 		(ParamFloat<px4::params::HY_HTAIL_CD>) _param_hy_htail_cd,
 		(ParamFloat<px4::params::HY_HTAIL_CD0>) _param_hy_htail_cd0,
 		(ParamFloat<px4::params::HY_HTAIL_AREA>) _param_hy_htail_area,
-		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max,
+		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max
 
 	)
 
