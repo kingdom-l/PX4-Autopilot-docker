@@ -76,6 +76,19 @@ public:
 	bool init();
 
 private:
+	uORB::SubscriptionCallbackWorkItem 	_hydro_torque_setpoint_sub{this, ORB_ID(hydro_torque_setpoint)};
+	uORB::SubscriptionCallbackWorkItem 	_hydro_thrust_setpoint_sub{this, ORB_ID(hydro_thrust_setpoint)};
+
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+
+	manual_control_setpoint_s		_manual_control_setpoint{0};
+	vehicle_attitude_s			_vehicle_attitude{0};
+
+	uORB::Publication<actuator_motors_s>	_hydro_motors_pub{ORB_ID(hydro_motors)};
+	uORB::Publication<actuator_servos_s>	_hydro_servos_pub{ORB_ID(hydro_servos)};
+
+
 	struct StructureInfo{
 		float x2;
 		float y2;
@@ -84,8 +97,10 @@ private:
 		float yh;
 		float xe;
 	};
-	StructureInfo _structure_info;
-	matrix::Matrix<float, 5, 6> effectiveness;
+	StructureInfo _st_info;
+	matrix::Matrix<float, 5, 6> _hy_effectiveness;
+	matrix::Matrix<float, 6, 5> _hy_mix;
+	matrix::Vector<float, 5> _wrench_sp;
 
 	struct NfParams{
 		float Cl;
@@ -101,6 +116,8 @@ private:
 	void optim(float x_opt[2], NfParams p);
 	SquareMatrix<float, 2> J_func(Vector2f x, NfParams p);
 	Vector2f func(Vector2f x, NfParams p);
+
+	void parameters_update();
 
 	perf_counter_t	_loop_perf;			/**< loop duration performance counter */
 
