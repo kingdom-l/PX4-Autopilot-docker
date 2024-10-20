@@ -108,9 +108,9 @@ private:
 	Params _params{};
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::HY_ALT_SPEED>) _param_hy_alt_speed,
+		(ParamFloat<px4::params::HY_AIRAPEED_TRIM>) _param_hy_airspeed_trim,
 		(ParamInt<px4::params::HY_SPEED_SELECT>) _param_hy_speed_select,
-		(ParamFloat<px4::params::HY_RT_MAX_THRUST>) _param_hy_rt_max_thrust,
+		(ParamFloat<px4::params::HY_MAX_THRUST>) _param_hy_max_thrust,
 		(ParamFloat<px4::params::HY_WING_RCL>) _param_hy_wing_r_cl,
 		(ParamFloat<px4::params::HY_WING_RCL0>) _param_hy_wing_r_cl0,
 		(ParamFloat<px4::params::HY_WING_RCD>) _param_hy_wing_r_cd,
