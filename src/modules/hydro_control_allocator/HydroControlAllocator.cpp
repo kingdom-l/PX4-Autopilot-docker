@@ -257,6 +257,25 @@ void HydroControlAllocator::Run()
 		optim(x_opt[1], _nf_params_hy_wl);
 		optim(x_opt[2], _nf_params_hy_htail); // 需要修改
 
+		//根据参数设置的对应关系填入数据并发送
+		// actuator_motors_s hydro_motors_msg{0};
+		// actuator_servos_s hydro_servos_msg{0};
+
+		// hydro_motors_msg.timestamp = hrt_absolute_time();
+		// hydro_motors_msg.timestamp_sample = _hydro_thrust_setpoint_msg.timestamp_sample;
+
+		// hydro_servos_msg.timestamp = hrt_absolute_time();
+		// hydro_servos_msg.timestamp_sample = _hydro_torque_setpoint_msg.timestamp_sample;
+
+		// hydro_motors_msg.control[_params.hy_rt_idx[0] - 1] = x[0][1];
+		// hydro_motors_msg.control[_params.hy_rt_idx[1] - 1] = x[1][1];
+
+		// hydro_servos_msg.control[_params.hy_sv_idx[0] - 1] = x[0][0];
+		// hydro_servos_msg.control[_params.hy_sv_idx[1] - 1] = x[1][0];
+
+		// _hydro_motors_pub.publish(hydro_motors_msg);
+		// _hydro_servos_pub.publish(hydro_servos_msg);
+
 
 	}
 
