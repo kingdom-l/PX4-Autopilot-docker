@@ -34,6 +34,7 @@
 #pragma once
 
 #include <lib/matrix/matrix/math.hpp>
+#include <lib/matrix/matrix/Matrix.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/SubscriptionInterval.hpp>
@@ -55,6 +56,7 @@ using namespace matrix;
 class HydroControlAllocator : public ModuleBase<HydroControlAllocator>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
+	static constexpr int HY_NUM_FORCE_COMPS = 6;
 
 	HydroControlAllocator();
 	~HydroControlAllocator() override;
@@ -96,11 +98,11 @@ private:
 		float yT;
 		float yh;
 		float xe;
-		bool with_thrust;
+
 	};
 	StructureInfo _st_info;
-	matrix::Matrix<float, 5, 6> _hy_effectiveness;
-	matrix::Matrix<float, 6, 5> _hy_mix;
+	matrix::Matrix<float, 5, HY_NUM_FORCE_COMPS> _hy_effectiveness;
+	matrix::Matrix<float, HY_NUM_FORCE_COMPS, 5> _hy_mix;
 	matrix::Vector<float, 5> _wrench_sp;
 
 	struct NfParams{
@@ -111,14 +113,16 @@ private:
 		float S_wing;
 		float Fx;
 		float Fz;
+		bool with_thrust;
 	};
 	float _Va2;
 	float _rho = 1e3;
+	float _alpha;
 	NfParams _nf_params_hy_wr;
 	NfParams _nf_params_hy_wl;
 	NfParams _nf_params_hy_htail;
 
-	Vector2f optim(float x_opt[2], NfParams p);
+	void optim(float x_opt[2], NfParams p);
 	SquareMatrix<float, 2> J_func(Vector2f x, NfParams p);
 	Vector2f func(Vector2f x, NfParams p);
 
@@ -132,7 +136,7 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_AIRAPEED_TRIM>) _param_hy_airspeed_trim,
 		(ParamFloat<px4::params::HY_ALPHA_TRIM>) _param_hy_alpha_trim,
-		(ParamInt<px4::params::HY_SPEED_SELECT>) _param_hy_speed_select,
+		(ParamBool<px4::params::HY_SPEED_SELECT>) _param_hy_speed_select,
 		(ParamFloat<px4::params::HY_MAX_THRUST>) _param_hy_max_thrust,
 		(ParamFloat<px4::params::HY_WING_R_CL>) _param_hy_wing_r_cl,
 		(ParamFloat<px4::params::HY_WING_R_CL0>) _param_hy_wing_r_cl0,

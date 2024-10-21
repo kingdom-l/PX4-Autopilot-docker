@@ -9,7 +9,6 @@
 # Start Control Allocator
 #
 control_allocator start
-hydro_control_allocator start
 
 #
 # Start attitude controller.
@@ -31,14 +30,19 @@ land_detector start fixedwing
 
 #
 # Start Mode Control.
-#hu
+#
 mode_control start
 
 #
-# Start attitude controller.
+# Start attitude controller for hydro.
 #
 hydro_att_control start
 hydro_rate_control start
+
+#
+# Start control allocator for hydro.
+#
+hydro_control_allocator start
 
 #
 # Start mavlink debug.

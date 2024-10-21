@@ -6,3 +6,5 @@ uint8 NUM_CONTROLS = 8
 float32[8] control # range: [-1, 1], where 1 means maximum positive position,
                    # -1 maximum negative,
                    # and NaN maps to disarmed
+
+# TOPICS actuator_servos hydro_servos

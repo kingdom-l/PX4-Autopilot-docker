@@ -58,7 +58,7 @@ PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 1.0);
  * This defines AoA trim of hydro in water
  *
  * @unit m/s
- * @min 0.2
+ * @min 0.0
  * @max 10.0
  * @decimal 2
  * @increment 0.5
@@ -71,14 +71,10 @@ PARAM_DEFINE_FLOAT(HY_ALPHA_TRIM, 0.0);
  *
  * Set this to 0 if there is no airspeed measurement.
  *
- * @unit
- * @min 0
- * @max 1
- * @decimal 2
- * @increment 1
+ * @boolean
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_SPEED_SELECT, 0);
+PARAM_DEFINE_INT32(HY_SPEED_SELECT, 0);
 
 /**
  * Maximum thrust of a single underwater thruster

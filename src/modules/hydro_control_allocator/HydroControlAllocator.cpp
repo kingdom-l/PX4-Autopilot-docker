@@ -58,7 +58,7 @@ HydroControlAllocator::~HydroControlAllocator()
 }
 
 bool
-HydroAllocator::init()
+HydroControlAllocator::init()
 {
 	if (!_hydro_torque_setpoint_sub.registerCallback() || !_hydro_thrust_setpoint_sub.registerCallback()) {
 		PX4_ERR("callback registration failed");
@@ -69,7 +69,7 @@ HydroAllocator::init()
 }
 
 void
-HydroAllocator::parameters_update()
+HydroControlAllocator::parameters_update()
 {
 	_st_info.x2 = 0;
 	_st_info.y2 = 0;
@@ -77,11 +77,24 @@ HydroAllocator::parameters_update()
 	_st_info.yT = 0.1;
 	_st_info.yh = 0.1;
 	_st_info.xe = 0.6;
-	_hy_effectiveness = {{        1,                          0,                       1,                      0,                 1,        0},
-			    {         0,                         -1,                       0,                     -1,                 0,        1},
-			    {         0,                 -(_st_info.y2+_st_info.yT),       0,             -(_st_info.y2-_st_info.yT), 0,        0},
-			    {  _st_info.z2,                _st_info.x2,             _st_info.z2,             _st_info.x2,             0, _st_info.xe},
-			    {-(_st_info.y2+_st_info.yT),           0,        -(_st_info.y2-_st_info.yT),            0,                0,         0}};
+
+	_hy_effectiveness(0,0) = 1; _hy_effectiveness(0,1) = 0; _hy_effectiveness(0,2) = 1;
+	_hy_effectiveness(0,3) = 0; _hy_effectiveness(0,4) = 1; _hy_effectiveness(0,5) = 0;
+
+	_hy_effectiveness(1,0) = 0; _hy_effectiveness(1,1) = -1; _hy_effectiveness(1,2) = 0;
+	_hy_effectiveness(1,3) = -1; _hy_effectiveness(1,4) = 0; _hy_effectiveness(1,5) = 1;
+
+	_hy_effectiveness(2,0) = 0;                          _hy_effectiveness(2,1) = -(_st_info.y2+_st_info.yT); _hy_effectiveness(2,2) = 0;
+	_hy_effectiveness(2,3) = -(_st_info.y2-_st_info.yT); _hy_effectiveness(2,4) = 0;                          _hy_effectiveness(2,5) = 0;
+
+	_hy_effectiveness(3,0) = _st_info.z2; _hy_effectiveness(3,1) = _st_info.x2; _hy_effectiveness(3,2) = _st_info.z2;
+	_hy_effectiveness(3,3) = _st_info.x2; _hy_effectiveness(3,4) = 0;           _hy_effectiveness(3,5) = _st_info.xe;
+
+	_hy_effectiveness(4,0) = -(_st_info.y2+_st_info.yT); _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = -(_st_info.y2-_st_info.yT);
+	_hy_effectiveness(4,3) = 0;                          _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
+
+
+	// _hy_effectiveness = hy_effectiveness;
 	matrix::geninv(_hy_effectiveness, _hy_mix);
 	_nf_params_hy_wr.Cl = _param_hy_wing_r_cl.get();
 	_nf_params_hy_wr.Cl0 = _param_hy_wing_r_cl0.get();
@@ -105,34 +118,34 @@ HydroAllocator::parameters_update()
 	_nf_params_hy_htail.with_thrust = false;
 }
 
-SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x, NfParams p)
+SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
 {
 	SquareMatrix<float, 2> J;
-	if(p.with_thrust)
-		float gamma = x_opt[0];
-		float T = x_opt[1];
+	if(p.with_thrust){
+		float gamma = x_opt(0);
+		float T = x_opt(1);
 
-		J(0, 0) = T * sin(gamma) - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * sin(_alpha) + 0.5 * _rho * p.S_wing * _Va2 * p.Cd * cos(_alpha);
-		J(0, 1) = -cos(gamma);
-		J(1, 0) =-T * cos(gamma) - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * cos(_alpha) - 0.5 * _rho * p.S_wing * _Va2 * p.Cd * sin(_alpha);
-		J(1, 1) = -sin(gamma);
-	else{
-		J(0, 0) = - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * sin(_alpha) + 0.5 * _rho * p.S_wing * _Va2 * p.Cd * cos(_alpha);
+		J(0, 0) = T * sinf(gamma) - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
+		J(0, 1) = -cosf(gamma);
+		J(1, 0) =-T * cosf(gamma) - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * cosf(_alpha) - 0.5f * _rho * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
+		J(1, 1) = -sinf(gamma);
+	}else{
+		J(0, 0) = - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
 		J(0, 1) = 0;
-		J(1, 0) = - 0.5 * _rho * p.S_wing * _Va2 * p.Cl * cos(_alpha) - 0.5 * _rho * p.S_wing * _Va2 * p.Cd * sin(_alpha);
+		J(1, 0) = - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * cosf(_alpha) - 0.5f * _rho * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
 		J(1, 1) = 0;
 	}
 
 	return J;
 }
 
-Vector2f HydroControlAllocator::func(Vector2f x, NfParams p)
+Vector2f HydroControlAllocator::func(Vector2f x_opt, NfParams p)
 {
-	float gamma = x_opt[0];
-	float T = x_opt[1];
+	float gamma = x_opt(0);
+	float T = x_opt(1);
 	Vector2f out;
-	out(0) = p.Fx - T * cos(gamma) - 0.5 * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sin(_alpha) + 0.5 * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cos(_alpha);
-	out(1) = p.Fz - T * sin(gamma) - 0.5 * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cos(_alpha) - 0.5 * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sin(_alpha);
+	out(0) = p.Fx - T * cosf(gamma) - 0.5f * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cosf(_alpha);
+	out(1) = p.Fz - T * sinf(gamma) - 0.5f * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cosf(_alpha) - 0.5f * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sinf(_alpha);
 	return out;
 }
 
@@ -168,13 +181,13 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 		}
 	}
 	else{
-		Vector delta_x;
+		float delta_x;
 		for(int i = 0; i < 10; i++){
 
 			J = J_func(x, p);
 			func_out = func(x, p);
-			delta_x = -0.2 * 1/J(0,0) * func_out(0) - 0.8 * 1/J(1,0) * func_out(1);
-			if(delta_x.norm_squared() < (float)1e-6)
+			delta_x = -0.2f * 1.0f/J(0,0) * func_out(0) - 0.8f * 1.0f/J(1,0) * func_out(1);
+			if(abs(delta_x) < (float)1e-6)
 				break;
 
 			x(0) = x(0) + delta_x;
@@ -215,7 +228,7 @@ void HydroControlAllocator::Run()
 
 	// Also run allocator on thrust setpoint changes if the torque setpoint
 	// has not been updated for more than 5ms
-	if (_vehicle_thrust_setpoint_sub.update(&hydro_thrust_setpoint)) {
+	if (_hydro_thrust_setpoint_sub.update(&hydro_thrust_setpoint)) {
 		_wrench_sp(0) = hydro_thrust_setpoint.xyz[0];
 		_wrench_sp(1) = hydro_thrust_setpoint.xyz[2];
 
@@ -241,7 +254,7 @@ void HydroControlAllocator::Run()
 		}
 
 		_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
-		Matrix::Vector<float, 6> force_sp = _hy_mix * _wrench_sp;
+		matrix::Vector<float, 6> force_sp = _hy_mix * _wrench_sp;
 
 		_nf_params_hy_wr.Fx = force_sp(0);
 		_nf_params_hy_wr.Fz = force_sp(1);
@@ -256,6 +269,8 @@ void HydroControlAllocator::Run()
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
 		optim(x_opt[2], _nf_params_hy_htail); // 需要修改
+
+		printf("Here Hydro Control Allocator");
 
 		//根据参数设置的对应关系填入数据并发送
 		// actuator_motors_s hydro_motors_msg{0};
@@ -303,6 +318,53 @@ int HydroControlAllocator::task_spawn(int argc, char *argv[])
 	_task_id = -1;
 
 	return PX4_ERROR;
+}
+
+int HydroControlAllocator::print_status()
+{
+	PX4_INFO("Running");
+
+	// Print current allocation method
+	// switch (_allocation_method_id) {
+	// case AllocationMethod::NONE:
+	// 	PX4_INFO("Method: None");
+	// 	break;
+
+	// case AllocationMethod::PSEUDO_INVERSE:
+	// 	PX4_INFO("Method: Pseudo-inverse");
+	// 	break;
+
+	// case AllocationMethod::SEQUENTIAL_DESATURATION:
+	// 	PX4_INFO("Method: Sequential desaturation");
+	// 	break;
+
+	// case AllocationMethod::AUTO:
+	// 	PX4_INFO("Method: Auto");
+	// 	break;
+	// }
+
+	// Print current effectiveness matrix
+	if (_hy_effectiveness.isAllFinite()) {
+		PX4_INFO("_hy_effectiveness =");
+		for(int i = 0; i < 5; i++){
+			printf("%2u|", i); // print row numbering
+			for(int j = 0; j < HY_NUM_FORCE_COMPS; j++){
+				printf("% 6.5f ",(double)_hy_effectiveness(i, j));
+			}
+			printf("\n");
+		}
+
+	}
+
+	// if (_handled_motor_failure_bitmask) {
+	// 	PX4_INFO("Failed motors: %i (0x%x)", math::countSetBits(_handled_motor_failure_bitmask),
+	// 		 _handled_motor_failure_bitmask);
+	// }
+
+	// Print perf
+	perf_print_counter(_loop_perf);
+
+	return 0;
 }
 
 int HydroControlAllocator::custom_command(int argc, char *argv[])
