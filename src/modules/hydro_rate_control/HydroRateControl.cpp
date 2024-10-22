@@ -106,14 +106,14 @@ HydroRateControl::vehicle_manual_poll()
 
 			} else { // _vehicle_status.nav_state == HYDRO_MODE_MANUAL
 
-				_vehicle_torque_setpoint.xyz[0] = math::constrain(_manual_control_setpoint.roll * _param_hy_man_r_sc.get() +
+				_hydro_torque_setpoint.xyz[0] = math::constrain(_manual_control_setpoint.roll * _param_hy_man_r_sc.get() +
 								  _param_trim_roll.get(), -1.f, 1.f);
-				_vehicle_torque_setpoint.xyz[1] = math::constrain(-_manual_control_setpoint.pitch * _param_hy_man_p_sc.get() +
+				_hydro_torque_setpoint.xyz[1] = math::constrain(-_manual_control_setpoint.pitch * _param_hy_man_p_sc.get() +
 								  _param_trim_pitch.get(), -1.f, 1.f);
-				_vehicle_torque_setpoint.xyz[2] = math::constrain(_manual_control_setpoint.yaw * _param_hy_man_y_sc.get() +
+				_hydro_torque_setpoint.xyz[2] = math::constrain(_manual_control_setpoint.yaw * _param_hy_man_y_sc.get() +
 								  _param_trim_yaw.get(), -1.f, 1.f);
 
-				_vehicle_thrust_setpoint.xyz[0] = math::constrain((_manual_control_setpoint.throttle + 1.f) * .5f, 0.f, 1.f);
+				_hydro_thrust_setpoint.xyz[0] = math::constrain((_manual_control_setpoint.throttle + 1.f) * .5f, 0.f, 1.f);
 			}
 		}
 	}
@@ -244,18 +244,18 @@ void HydroRateControl::Run()
 
 			// PX4_INFO("control_u: %f, %f, %f", (double)control_u(0), (double)control_u(1), (double)control_u(2));
 			if (control_u.isAllFinite()) {
-				matrix::constrain(control_u + trim, -1.f, 1.f).copyTo(_vehicle_torque_setpoint.xyz);
+				matrix::constrain(control_u + trim, -1.f, 1.f).copyTo(_hydro_torque_setpoint.xyz);
 
 			} else {
 				_rate_control.resetIntegral();
-				trim.copyTo(_vehicle_torque_setpoint.xyz);
+				trim.copyTo(_hydro_torque_setpoint.xyz);
 			}
 
 			/* throttle passed through if it is finite */
-			_vehicle_thrust_setpoint.xyz[0] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ? _rates_sp.thrust_body[0] : 0.0f;
+			_hydro_thrust_setpoint.xyz[0] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ? _rates_sp.thrust_body[0] : 0.0f;
 
 			/* scale effort by battery status */
-			if (_param_hy_bat_scale_en.get() && _vehicle_thrust_setpoint.xyz[0] > 0.1f) {
+			if (_param_hy_bat_scale_en.get() && _hydro_thrust_setpoint.xyz[0] > 0.1f) {
 
 				if (_battery_status_sub.updated()) {
 					battery_status_s battery_status{};
@@ -265,7 +265,7 @@ void HydroRateControl::Run()
 					}
 				}
 
-				_vehicle_thrust_setpoint.xyz[0] *= _battery_scale;
+				_hydro_thrust_setpoint.xyz[0] *= _battery_scale;
 			}
 
 		} else {
@@ -276,20 +276,20 @@ void HydroRateControl::Run()
 			_vehicle_status.nav_state == HYDRO_MODE_ACRO || _vehicle_status.nav_state == HYDRO_MODE_MANUAL){
 			// Add feed-forward from roll control output to yaw control output
 			// This can be used to counteract the adverse yaw effect when rolling the plane
-			_vehicle_torque_setpoint.xyz[2] = math::constrain(_vehicle_torque_setpoint.xyz[2] + _param_hy_rll_to_yaw_ff.get() *
-							_vehicle_torque_setpoint.xyz[0], -1.f, 1.f);
+			_hydro_torque_setpoint.xyz[2] = math::constrain(_hydro_torque_setpoint.xyz[2] + _param_hy_rll_to_yaw_ff.get() *
+							_hydro_torque_setpoint.xyz[0], -1.f, 1.f);
 
 			//推力前馈到pit轴力矩上
-			_vehicle_torque_setpoint.xyz[1] = math::constrain(_vehicle_torque_setpoint.xyz[1] + _param_thr_to_pit_ff.get() *
-							_vehicle_thrust_setpoint.xyz[0], -1.f, 1.f);
+			_hydro_torque_setpoint.xyz[1] = math::constrain(_hydro_torque_setpoint.xyz[1] + _param_thr_to_pit_ff.get() *
+							_hydro_thrust_setpoint.xyz[0], -1.f, 1.f);
 
-			_vehicle_thrust_setpoint.timestamp = hrt_absolute_time();
-			_vehicle_thrust_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
-			_vehicle_thrust_setpoint_pub.publish(_vehicle_thrust_setpoint);
+			_hydro_thrust_setpoint.timestamp = hrt_absolute_time();
+			_hydro_thrust_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
+			_hydro_thrust_setpoint_pub.publish(_hydro_thrust_setpoint);
 
-			_vehicle_torque_setpoint.timestamp = hrt_absolute_time();
-			_vehicle_torque_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
-			_vehicle_torque_setpoint_pub.publish(_vehicle_torque_setpoint);
+			_hydro_torque_setpoint.timestamp = hrt_absolute_time();
+			_hydro_torque_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
+			_hydro_torque_setpoint_pub.publish(_hydro_torque_setpoint);
 		}
 	}
 
