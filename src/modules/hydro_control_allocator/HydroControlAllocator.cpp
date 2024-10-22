@@ -174,8 +174,8 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 			x_new = x + delta_x;
 
 			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
-			// float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_rt_max_thrust.get();
-			x_new(1) = math::constrain(x_new(1), 0.f, _param_hy_max_thrust.get());
+			float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_max_thrust.get();
+			x_new(1) = math::constrain(x_new(1), 0.f, x1_max);
 
 			x = x_new;
 		}
@@ -273,23 +273,25 @@ void HydroControlAllocator::Run()
 		printf("Here Hydro Control Allocator");
 
 		//根据参数设置的对应关系填入数据并发送
-		// actuator_motors_s hydro_motors_msg{0};
-		// actuator_servos_s hydro_servos_msg{0};
+		actuator_motors_s hydro_motors_msg{0};
+		actuator_servos_s hydro_servos_msg{0};
 
-		// hydro_motors_msg.timestamp = hrt_absolute_time();
-		// hydro_motors_msg.timestamp_sample = _hydro_thrust_setpoint_msg.timestamp_sample;
+		hydro_motors_msg.timestamp = hrt_absolute_time();
+		hydro_motors_msg.timestamp_sample = hydro_thrust_setpoint.timestamp_sample;
 
-		// hydro_servos_msg.timestamp = hrt_absolute_time();
-		// hydro_servos_msg.timestamp_sample = _hydro_torque_setpoint_msg.timestamp_sample;
+		hydro_servos_msg.timestamp = hrt_absolute_time();
+		hydro_servos_msg.timestamp_sample = hydro_torque_setpoint.timestamp_sample;
 
-		// hydro_motors_msg.control[_params.hy_rt_idx[0] - 1] = x[0][1];
-		// hydro_motors_msg.control[_params.hy_rt_idx[1] - 1] = x[1][1];
+		// 此处hy_rt_idx[0]对应右边电机的Motor编号
+		hydro_motors_msg.control[_params.hy_rt_idx[0] - 1] = x_opt[0][1];
+		hydro_motors_msg.control[_params.hy_rt_idx[1] - 1] = x_opt[1][1];
 
-		// hydro_servos_msg.control[_params.hy_sv_idx[0] - 1] = x[0][0];
-		// hydro_servos_msg.control[_params.hy_sv_idx[1] - 1] = x[1][0];
+		hydro_servos_msg.control[_params.hy_sv_idx[0] - 1] = x_opt[0][0];
+		hydro_servos_msg.control[_params.hy_sv_idx[1] - 1] = x_opt[1][0];
+		hydro_servos_msg.control[_params.hy_sv_idx[1] - 1] = x_opt[2][0];
 
-		// _hydro_motors_pub.publish(hydro_motors_msg);
-		// _hydro_servos_pub.publish(hydro_servos_msg);
+		_hydro_motors_pub.publish(hydro_motors_msg);
+		_hydro_servos_pub.publish(hydro_servos_msg);
 
 
 	}
