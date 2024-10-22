@@ -181,6 +181,11 @@ private:
 	uORB::Subscription _vehicle_torque_setpoint1_sub{ORB_ID(vehicle_torque_setpoint), 1};  /**< vehicle torque setpoint subscription (2. instance) */
 	uORB::Subscription _vehicle_thrust_setpoint1_sub{ORB_ID(vehicle_thrust_setpoint), 1};	 /**< vehicle thrust setpoint subscription (2. instance) */
 
+	uORB::Subscription _hydro_motors_sub{ORB_ID(hydro_motors)};
+	uORB::Subscription _hydro_servos_sub{ORB_ID(hydro_servos)};
+	actuator_motors_s _hydro_motors;
+	actuator_servos_s _hydro_servos;
+
 	// Outputs
 	uORB::PublicationMulti<control_allocator_status_s> _control_allocator_status_pub[2] {ORB_ID(control_allocator_status), ORB_ID(control_allocator_status)};
 

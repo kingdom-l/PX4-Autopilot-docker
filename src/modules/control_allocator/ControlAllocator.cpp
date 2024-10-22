@@ -423,6 +423,10 @@ ControlAllocator::Run()
 	}
 
 	update_allocate_hydro_state();
+	{
+		_hydro_motors_sub.update(&_hydro_motors);
+		_hydro_servos_sub.update(&_hydro_servos);
+	}
 
 	// Guard against too small (< 0.2ms) and too large (> 20ms) dt's.
 	const hrt_abstime now = hrt_absolute_time();
@@ -453,6 +457,7 @@ ControlAllocator::Run()
 		}
 	}
 	// PX4_INFO("_thrust_torque_sp: %f %f %f %f %f %f", (double)_thrust_sp(0), (double)_thrust_sp(1), (double)_thrust_sp(2), (double)_torque_sp(0), (double)_torque_sp(1), (double)_torque_sp(2));
+
 
 	if (do_update) {
 		_last_run = now;
@@ -695,7 +700,7 @@ ControlAllocator::publish_control_allocator_status(int matrix_index)
 			control_allocator_status.unallocated_thrust[2]).norm_squared() < 1e-6f);
 
 	// Actuator saturation
-	const matrix::Vector<float, NUM_ACTUATORS> &actuator_sp = _control_allocation[matrix_index]->getActuatorSetpoint();
+	const matrix::Vector<float, NUM_ACTUATORS> &actuator_sp = _control_allocation[matrix_index]->getActuatorSetpoint(); // 返回_actuator_sp
 	const matrix::Vector<float, NUM_ACTUATORS> &actuator_min = _control_allocation[matrix_index]->getActuatorMin();
 	const matrix::Vector<float, NUM_ACTUATORS> &actuator_max = _control_allocation[matrix_index]->getActuatorMax();
 
@@ -744,6 +749,8 @@ ControlAllocator::publish_actuator_controls()
 		float actuator_sp = _control_allocation[selected_matrix]->getActuatorSetpoint()(actuator_idx_matrix[selected_matrix]);
 		actuator_motors.control[motors_idx] = PX4_ISFINITE(actuator_sp) ? actuator_sp : NAN;
 
+		actuator_motors.control[motors_idx] = _hydro_motors.control[motors_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
+
 		if (stopped_motors & (1u << motors_idx)) {
 			actuator_motors.control[motors_idx] = NAN;
 		}
@@ -766,6 +773,9 @@ ControlAllocator::publish_actuator_controls()
 			int selected_matrix = _control_allocation_selection_indexes[actuator_idx];
 			float actuator_sp = _control_allocation[selected_matrix]->getActuatorSetpoint()(actuator_idx_matrix[selected_matrix]);
 			actuator_servos.control[servos_idx] = PX4_ISFINITE(actuator_sp) ? actuator_sp : NAN;
+
+			actuator_servos.control[servos_idx] = _hydro_servos.control[servos_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
+
 			++actuator_idx_matrix[selected_matrix];
 			++actuator_idx;
 
