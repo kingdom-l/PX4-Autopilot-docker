@@ -96,18 +96,18 @@ HydroControlAllocator::parameters_update()
 
 	// _hy_effectiveness = hy_effectiveness;
 	matrix::geninv(_hy_effectiveness, _hy_mix);
-	_nf_params_hy_wr.Cl = _param_hy_wing_r_cl.get();
-	_nf_params_hy_wr.Cl0 = _param_hy_wing_r_cl0.get();
-	_nf_params_hy_wr.Cd = _param_hy_wing_r_cd.get();
-	_nf_params_hy_wr.Cd0 = _param_hy_wing_r_cd0.get();
-	_nf_params_hy_wr.S_wing = _param_hy_wing_r_area.get();
+	_nf_params_hy_wr.Cl = _param_hy_rhf_cl.get();
+	_nf_params_hy_wr.Cl0 = _param_hy_rhf_cl0.get();
+	_nf_params_hy_wr.Cd = _param_hy_rhf_cd.get();
+	_nf_params_hy_wr.Cd0 = _param_hy_rhf_cd0.get();
+	_nf_params_hy_wr.S_wing = _param_hy_rhf_area.get();
 	_nf_params_hy_wr.with_thrust = true;
 
-	_nf_params_hy_wl.Cl = _param_hy_wing_r_cl.get();
-	_nf_params_hy_wl.Cl0 = _param_hy_wing_r_cl0.get();
-	_nf_params_hy_wl.Cd = _param_hy_wing_r_cd.get();
-	_nf_params_hy_wl.Cd0 = _param_hy_wing_r_cd0.get();
-	_nf_params_hy_wl.S_wing = _param_hy_wing_r_area.get();
+	_nf_params_hy_wl.Cl = _param_hy_rhf_cl.get();
+	_nf_params_hy_wl.Cl0 = _param_hy_rhf_cl0.get();
+	_nf_params_hy_wl.Cd = _param_hy_rhf_cd.get();
+	_nf_params_hy_wl.Cd0 = _param_hy_rhf_cd0.get();
+	_nf_params_hy_wl.S_wing = _param_hy_rhf_area.get();
 	_nf_params_hy_wl.with_thrust = true;
 
 	_nf_params_hy_htail.Cl = _param_hy_htail_cl.get();
@@ -174,7 +174,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 			x_new = x + delta_x;
 
 			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
-			float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_max_thrust.get();
+			float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
 			x_new(1) = math::constrain(x_new(1), 0.f, x1_max);
 
 			x = x_new;
@@ -283,12 +283,12 @@ void HydroControlAllocator::Run()
 		hydro_servos_msg.timestamp_sample = hydro_torque_setpoint.timestamp_sample;
 
 		// 此处hy_rt_idx[0]对应右边电机的Motor编号
-		hydro_motors_msg.control[_params.hy_rt_idx[0] - 1] = x_opt[0][1];
-		hydro_motors_msg.control[_params.hy_rt_idx[1] - 1] = x_opt[1][1];
+		hydro_motors_msg.control[_param_hy_rmotor_idx.get() - 1] = x_opt[0][1]; // 右水翼电机
+		hydro_motors_msg.control[_param_hy_lmotor_idx.get() - 1] = x_opt[1][1]; // 左水翼电机
 
-		hydro_servos_msg.control[_params.hy_sv_idx[0] - 1] = x_opt[0][0];
-		hydro_servos_msg.control[_params.hy_sv_idx[1] - 1] = x_opt[1][0];
-		hydro_servos_msg.control[_params.hy_sv_idx[1] - 1] = x_opt[2][0];
+		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = x_opt[0][0]; // 右水翼舵机
+		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = x_opt[1][0];
+		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = x_opt[2][0];
 
 		_hydro_motors_pub.publish(hydro_motors_msg);
 		_hydro_servos_pub.publish(hydro_servos_msg);

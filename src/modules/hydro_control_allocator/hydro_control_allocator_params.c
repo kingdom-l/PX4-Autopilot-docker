@@ -87,7 +87,20 @@ PARAM_DEFINE_INT32(HY_SPEED_SELECT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_MAX_THRUST, 2);
+PARAM_DEFINE_FLOAT(HY_THRUST_MAX, 2);
+
+/**
+ * Maximum thrust Gain of a single underwater thruster
+ *
+ *
+ * @unit N
+ * @min 0
+ * @max 10
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_TH_MAX_GAIN, 2);
 
 /**
  * Right hydrofoil lift coefficient
@@ -100,7 +113,7 @@ PARAM_DEFINE_FLOAT(HY_MAX_THRUST, 2);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_R_CL, 0.14);
+PARAM_DEFINE_FLOAT(HY_RHF_CL, 0.14);
 
 /**
  * Right hydrofoil zero-lift coefficient
@@ -113,7 +126,7 @@ PARAM_DEFINE_FLOAT(HY_WING_R_CL, 0.14);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_R_CL0, 0);
+PARAM_DEFINE_FLOAT(HY_RHF_CL0, 0);
 
 /**
  * Right hydrofoil drag coefficient
@@ -126,7 +139,7 @@ PARAM_DEFINE_FLOAT(HY_WING_R_CL0, 0);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_R_CD, 0.0034);
+PARAM_DEFINE_FLOAT(HY_RHF_CD, 0.0034);
 
 /**
  * Right hydrofoil zero-lift drag coefficient
@@ -139,7 +152,7 @@ PARAM_DEFINE_FLOAT(HY_WING_R_CD, 0.0034);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_R_CD0, 0.0048);
+PARAM_DEFINE_FLOAT(HY_RHF_CD0, 0.0048);
 
 /**
  * Wing area of  Right hydrofoil
@@ -152,7 +165,7 @@ PARAM_DEFINE_FLOAT(HY_WING_R_CD0, 0.0048);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_WING_R_AREA, 0.015);
+PARAM_DEFINE_FLOAT(HY_RHF_AREA, 0.015);
 
 /**
  * Horizontal tail lift coefficient
@@ -231,3 +244,54 @@ PARAM_DEFINE_FLOAT(HY_HTAIL_AREA, 0.02);
  * @group Hydro Control Allocator
  */
 PARAM_DEFINE_FLOAT(HY_WING_ANG_MAX, 0.7);
+
+/**
+ * Index of Hydro Right Motor in Actuators Setup
+ *
+ *
+ * @boolean
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_INT32(HY_LMOTOR_IDX, 1);
+
+/**
+ * Index of Hydro Left Motor in Actuators Setup
+ *
+ *
+ *
+ * @boolean
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_INT32(HY_RMOTOR_IDX, 2);
+
+/**
+ * Index of Hydro Horizontal Tail Servo in Actuators Setup
+ *
+ *
+ *
+ * @boolean
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_INT32(HY_HTAIL_SV_IDX, 3);
+
+/**
+ * Index of Hydrofoil Right Servo in Actuators Setup
+ *
+ *
+ *
+ * @boolean
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_INT32(HY_R_SV_IDX, 4);
+
+/**
+ * Index of Hydrofoil Left Servo in Actuators Setup
+ *
+ *
+ *
+ * @boolean
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_INT32(HY_L_SV_IDX, 5);
+
+

@@ -137,18 +137,24 @@ private:
 		(ParamFloat<px4::params::HY_AIRAPEED_TRIM>) _param_hy_airspeed_trim,
 		(ParamFloat<px4::params::HY_ALPHA_TRIM>) _param_hy_alpha_trim,
 		(ParamBool<px4::params::HY_SPEED_SELECT>) _param_hy_speed_select,
-		(ParamFloat<px4::params::HY_MAX_THRUST>) _param_hy_max_thrust,
-		(ParamFloat<px4::params::HY_WING_R_CL>) _param_hy_wing_r_cl,
-		(ParamFloat<px4::params::HY_WING_R_CL0>) _param_hy_wing_r_cl0,
-		(ParamFloat<px4::params::HY_WING_R_CD>) _param_hy_wing_r_cd,
-		(ParamFloat<px4::params::HY_WING_R_CD0>) _param_hy_wing_r_cd0,
-		(ParamFloat<px4::params::HY_WING_R_AREA>) _param_hy_wing_r_area,
+		(ParamFloat<px4::params::HY_THRUST_MAX>) _param_hy_thrust_max,
+		(ParamFloat<px4::params::HY_TH_MAX_GAIN>) _param_hy_th_max_gain,
+		(ParamFloat<px4::params::HY_RHF_CL>) _param_hy_rhf_cl,
+		(ParamFloat<px4::params::HY_RHF_CL0>) _param_hy_rhf_cl0, // rhf: right hydrofoil
+		(ParamFloat<px4::params::HY_RHF_CD>) _param_hy_rhf_cd,
+		(ParamFloat<px4::params::HY_RHF_CD0>) _param_hy_rhf_cd0,
+		(ParamFloat<px4::params::HY_RHF_AREA>) _param_hy_rhf_area,
 		(ParamFloat<px4::params::HY_HTAIL_CL>) _param_hy_htail_cl,
 		(ParamFloat<px4::params::HY_HTAIL_CL0>) _param_hy_htail_cl0,
 		(ParamFloat<px4::params::HY_HTAIL_CD>) _param_hy_htail_cd,
 		(ParamFloat<px4::params::HY_HTAIL_CD0>) _param_hy_htail_cd0,
 		(ParamFloat<px4::params::HY_HTAIL_AREA>) _param_hy_htail_area,
-		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max
+		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max,
+		(ParamInt<px4::params::HY_RMOTOR_IDX>) _param_hy_rmotor_idx,
+		(ParamInt<px4::params::HY_LMOTOR_IDX>) _param_hy_lmotor_idx,
+		(ParamInt<px4::params::HY_R_SV_IDX>) _param_hy_r_sv_idx,
+		(ParamInt<px4::params::HY_L_SV_IDX>) _param_hy_l_sv_idx,
+		(ParamInt<px4::params::HY_HTAIL_SV_IDX>) _param_hy_htail_sv_idx
 
 	)
 
