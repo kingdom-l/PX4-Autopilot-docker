@@ -268,7 +268,7 @@ void HydroControlAllocator::Run()
 			       {0, 0}}; // 初值取得可能有问题
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
-		optim(x_opt[2], _nf_params_hy_htail); // 需要修改
+		optim(x_opt[2], _nf_params_hy_htail); // 需要考虑如何融合计算得到的两个舵偏角以及舵机角度归一化
 
 		printf("Here Hydro Control Allocator");
 
