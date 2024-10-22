@@ -671,11 +671,11 @@ ControlAllocator::publish_control_allocator_status(int matrix_index)
 	// TODO: disabled motors (?)
 
 	// Allocated control
-	const matrix::Vector<float, NUM_AXES> &allocated_control = _control_allocation[matrix_index]->getAllocatedControl();
+	const matrix::Vector<float, NUM_AXES> &allocated_control = _control_allocation[matrix_index]->getAllocatedControl(); // 根据ControlAllocationPseudoInverse::allocate()可知allocated_control=(_control_sp - _control_trim)
 
 	// Unallocated control
 	const matrix::Vector<float, NUM_AXES> unallocated_control = _control_allocation[matrix_index]->getControlSetpoint() -
-			allocated_control;
+			allocated_control;										    // unallocated_control = _control_trim
 	control_allocator_status.unallocated_torque[0] = unallocated_control(0);
 	control_allocator_status.unallocated_torque[1] = unallocated_control(1);
 	control_allocator_status.unallocated_torque[2] = unallocated_control(2);
