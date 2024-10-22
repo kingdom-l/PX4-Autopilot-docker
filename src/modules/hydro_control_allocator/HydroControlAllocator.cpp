@@ -283,12 +283,12 @@ void HydroControlAllocator::Run()
 		hydro_servos_msg.timestamp_sample = hydro_torque_setpoint.timestamp_sample;
 
 		// 此处hy_rt_idx[0]对应右边电机的Motor编号
-		hydro_motors_msg.control[_param_hy_rmotor_idx.get() - 1] = x_opt[0][1]; // 右水翼电机
-		hydro_motors_msg.control[_param_hy_lmotor_idx.get() - 1] = x_opt[1][1]; // 左水翼电机
+		hydro_motors_msg.control[_param_hy_rmotor_idx.get() - 1] = math::constrain(x_opt[0][1], 0.f, _param_hy_thrust_max.get()); // 右水翼电机
+		hydro_motors_msg.control[_param_hy_lmotor_idx.get() - 1] = math::constrain(x_opt[1][1], 0.f, _param_hy_thrust_max.get()); // 左水翼电机
 
-		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = x_opt[0][0]; // 右水翼舵机
-		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = x_opt[1][0];
-		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = x_opt[2][0];
+		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f); // 右水翼舵机
+		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = math::constrain(x_opt[1][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
+		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(x_opt[2][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
 
 		_hydro_motors_pub.publish(hydro_motors_msg);
 		_hydro_servos_pub.publish(hydro_servos_msg);
