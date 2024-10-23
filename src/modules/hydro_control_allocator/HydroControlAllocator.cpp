@@ -76,7 +76,7 @@ HydroControlAllocator::parameters_update()
 	_st_info.z2 = 0.2;
 	_st_info.yT = 0.1;
 	_st_info.yh = 0.1;
-	_st_info.xe = 0.6;
+	_st_info.xe = 0.2;
 
 	_hy_effectiveness(0,0) = 1; _hy_effectiveness(0,1) = 0; _hy_effectiveness(0,2) = 1;
 	_hy_effectiveness(0,3) = 0; _hy_effectiveness(0,4) = 1; _hy_effectiveness(0,5) = 0;
@@ -130,7 +130,8 @@ SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
 		J(1, 0) =-T * cosf(gamma) - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * cosf(_alpha) - 0.5f * _rho * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
 		J(1, 1) = -sinf(gamma);
 	}else{
-		J(0, 0) = - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
+		// J(0, 0) = - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
+		J(0, 0) = 0;
 		J(0, 1) = 0;
 		J(1, 0) = - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * cosf(_alpha) - 0.5f * _rho * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
 		J(1, 1) = 0;
@@ -174,7 +175,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 			x_new = x + delta_x;
 
 			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
-			float x1_max = math::constrain(_param_hy_th_max_gain.get() * (_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
+			float x1_max = math::constrain((_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
 			x_new(1) = math::constrain(x_new(1), 0.f, x1_max);
 
 			x = x_new;
@@ -186,13 +187,16 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 
 			J = J_func(x, p);
 			func_out = func(x, p);
-			delta_x = -0.2f * 1.0f/J(0,0) * func_out(0) - 0.8f * 1.0f/J(1,0) * func_out(1);
-			if(abs(delta_x) < (float)1e-6)
+			delta_x = - 1.0f/J(1,0) * func_out(1); //-0.f * 1.0f/J(0,0) * func_out(0);
+			if(std::fabs(delta_x) <= 1e-6f){
+
 				break;
+			}
 
 			x(0) = x(0) + delta_x;
 
 			x(0) = math::constrain(x(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
+			printf("func_out: %f %f %f \n", (double)J(1,0), (double)func_out(0), (double)func_out(1));
 		}
 	}
 	x.copyTo(x_opt);
@@ -221,7 +225,7 @@ void HydroControlAllocator::Run()
 		_wrench_sp(2) = hydro_torque_setpoint.xyz[0];
 		_wrench_sp(3) = hydro_torque_setpoint.xyz[1];
 		_wrench_sp(4) = hydro_torque_setpoint.xyz[2];
-		// PX4_INFO("_torque_sp: %f %f %f", (double)_torque_sp(0), (double)_torque_sp(1), (double)_torque_sp(2));
+		PX4_INFO("_torque_sp: %f %f %f", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 		do_update = true;
 		_timestamp_sample = hydro_torque_setpoint.timestamp_sample;
 	}
@@ -269,8 +273,10 @@ void HydroControlAllocator::Run()
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
 		optim(x_opt[2], _nf_params_hy_htail); // 需要考虑如何融合计算得到的两个舵偏角以及舵机角度归一化
+						      // 仅考虑尾翼的扭矩
 
-		printf("Here Hydro Control Allocator");
+		printf("htail: %f %f \n", (double)force_sp(4), (double)force_sp(5));
+		printf("gamma3: %f %f \n", (double)x_opt[2][0], (double)x_opt[2][1]);
 
 		//根据参数设置的对应关系填入数据并发送
 		actuator_motors_s hydro_motors_msg{0};

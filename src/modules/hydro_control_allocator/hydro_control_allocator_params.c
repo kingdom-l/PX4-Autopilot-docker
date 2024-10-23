@@ -50,7 +50,7 @@
  * @increment 0.5
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 1.0);
+PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 2.0);
 
 /**
  * Hydro Angle of Attack Trim
