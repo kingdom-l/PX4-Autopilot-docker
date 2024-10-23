@@ -2296,12 +2296,12 @@ FixedwingPositionControl::Run()
 		vehicle_global_position_s gpos;
 
 		if (_global_pos_sub.update(&gpos)) {
-			_current_latitude = gpos.lat;
-			_current_longitude = gpos.lon;
+			_current_latitude = gpos.lat; // Latitude, (degrees)
+			_current_longitude = gpos.lon; // Longitude, (degrees)
 		}
 
 		if (_local_pos.z_global && PX4_ISFINITE(_local_pos.ref_alt)) {
-			_reference_altitude = _local_pos.ref_alt;
+			_reference_altitude = _local_pos.ref_alt; // Reference altitude AMSL, (metres)
 
 		} else {
 			_reference_altitude = 0.f;
@@ -2313,7 +2313,7 @@ FixedwingPositionControl::Run()
 		if (_control_mode.flag_control_manual_enabled) {
 			if (_control_mode.flag_control_altitude_enabled && _local_pos.vz_reset_counter != _alt_reset_counter) {
 				// make TECS accept step in altitude and demanded altitude
-				_tecs.handle_alt_step(_current_altitude, -_local_pos.vz);
+				_tecs.handle_alt_step(_current_altitude, -_local_pos.vz); // _local_pos.vz: Down velocity in NED earth-fixed frame, (metres/sec)
 			}
 
 			// adjust navigation waypoints in position control mode
