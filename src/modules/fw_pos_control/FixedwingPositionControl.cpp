@@ -2299,14 +2299,14 @@ FixedwingPositionControl::Run()
 			_current_latitude = gpos.lat; // Latitude, (degrees)
 			_current_longitude = gpos.lon; // Longitude, (degrees)
 		}
-
+		// z_global: true if z has a valid global reference (ref_alt)
 		if (_local_pos.z_global && PX4_ISFINITE(_local_pos.ref_alt)) {
-			_reference_altitude = _local_pos.ref_alt; // Reference altitude AMSL, (metres)
+			_reference_altitude = _local_pos.ref_alt; // ref_lat: Reference altitude AMSL of reference point (local NED frame origin), (metres) --dummy
 
 		} else {
 			_reference_altitude = 0.f;
 		}
-
+		// _local_pos.z: Down position (negative altitude) in NED earth-fixed frame --dummy
 		_current_altitude = -_local_pos.z + _reference_altitude; // Altitude AMSL(above mean sea level) in meters
 
 		// handle estimator reset events. we only adjust setpoins for manual modes
@@ -2337,6 +2337,7 @@ FixedwingPositionControl::Run()
 			double reference_latitude = 0.;
 			double reference_longitude = 0.;
 
+			// xy_global: true if reference point (local NED frame origin) in global frame has a valid global reference (ref_lat, ref_lon)
 			if (_local_pos.xy_global && PX4_ISFINITE(_local_pos.ref_lat) && PX4_ISFINITE(_local_pos.ref_lon)) {
 				reference_latitude = _local_pos.ref_lat;
 				reference_longitude = _local_pos.ref_lon;
