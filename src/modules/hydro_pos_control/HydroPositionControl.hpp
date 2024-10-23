@@ -165,7 +165,7 @@ class HydroPositionControl final : public ModuleBase<HydroPositionControl>, publ
 	public px4::WorkItem
 {
 public:
-	HydroPositionControl(bool vtol = false);
+	HydroPositionControl();
 	~HydroPositionControl() override;
 
 	/** @see ModuleBase */
@@ -187,31 +187,24 @@ private:
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	uORB::Subscription _airspeed_validated_sub{ORB_ID(airspeed_validated)};
-	uORB::Subscription _wind_sub{ORB_ID(wind)};
+
 	uORB::Subscription _control_mode_sub{ORB_ID(vehicle_control_mode)};
 	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription _pos_sp_triplet_sub{ORB_ID(position_setpoint_triplet)};
-	uORB::Subscription _trajectory_setpoint_sub{ORB_ID(trajectory_setpoint)};
+
 	uORB::Subscription _vehicle_air_data_sub{ORB_ID(vehicle_air_data)};
 	uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
 	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
-	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
+
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	uORB::Publication<vehicle_attitude_setpoint_s> _attitude_sp_pub;
 	uORB::Publication<vehicle_local_position_setpoint_s> _local_pos_sp_pub{ORB_ID(vehicle_local_position_setpoint)};
-	uORB::Publication<npfg_status_s> _npfg_status_pub{ORB_ID(npfg_status)};
+
 	uORB::Publication<position_controller_status_s>	_pos_ctrl_status_pub{ORB_ID(position_controller_status)};
-	uORB::Publication<position_controller_landing_status_s>	_pos_ctrl_landing_status_pub{ORB_ID(position_controller_landing_status)};
-	uORB::Publication<tecs_status_s> _tecs_status_pub{ORB_ID(tecs_status)};
-	uORB::Publication<launch_detection_status_s> _launch_detection_status_pub{ORB_ID(launch_detection_status)};
-	uORB::PublicationMulti<orbit_status_s> _orbit_status_pub{ORB_ID(orbit_status)};
-	uORB::Publication<landing_gear_s> _landing_gear_pub {ORB_ID(landing_gear)};
-	uORB::Publication<normalized_unsigned_setpoint_s> _flaps_setpoint_pub{ORB_ID(flaps_setpoint)};
-	uORB::Publication<normalized_unsigned_setpoint_s> _spoilers_setpoint_pub{ORB_ID(spoilers_setpoint)};
-	uORB::PublicationData<flight_phase_estimation_s> _flight_phase_estimation_pub{ORB_ID(flight_phase_estimation)};
+
 
 	manual_control_setpoint_s _manual_control_setpoint{};
 	position_setpoint_triplet_s _pos_sp_triplet{};
@@ -220,7 +213,6 @@ private:
 	vehicle_local_position_s _local_pos{};
 	vehicle_status_s _vehicle_status{};
 
-	Vector2f _lpos_where_backtrans_started;
 
 	bool _position_setpoint_previous_valid{false};
 	bool _position_setpoint_current_valid{false};
@@ -247,11 +239,6 @@ private:
 		FW_POSCTRL_MODE_OTHER
 	} _control_mode_current{FW_POSCTRL_MODE_OTHER}; // used to check if the mode has changed
 
-	enum StickConfig {
-		STICK_CONFIG_SWAP_STICKS_BIT = (1 << 0),
-		STICK_CONFIG_ENABLE_AIRSPEED_SP_MANUAL_BIT = (1 << 1)
-	};
-
 	// VEHICLE STATES
 
 	double _current_latitude{0};
@@ -265,12 +252,6 @@ private:
 
 	float _body_acceleration_x{0.f};
 	float _body_velocity_x{0.f};
-
-	MapProjection _global_local_proj_ref{};
-
-	float _reference_altitude{NAN}; // [m AMSL] altitude of the local projection reference point
-
-	bool _landed{true};
 
 	// MANUAL MODES
 
@@ -294,133 +275,14 @@ private:
 	// [m/s] airspeed setpoint for manual modes commanded via MAV_CMD_DO_CHANGE_SPEED
 	float _commanded_manual_airspeed_setpoint{NAN};
 
-	// AUTO TAKEOFF
 
-	// [m] ground altitude AMSL where the plane was launched
-	float _takeoff_ground_alt{0.0f};
-
-	// class handling launch detection methods for fixed-wing takeoff
-	LaunchDetector _launchDetector;
-
-	// true if a launch, specifically using the launch detector, has been detected
-	bool _launch_detected{false};
-
-	// [deg] global position of the vehicle at the time launch is detected (using launch detector)
-	Vector2d _launch_global_position{0, 0};
-
-	// [rad] current vehicle yaw at the time the launch is detected
-	float _launch_current_yaw{0.f};
-
-	// class handling runway takeoff for fixed-wing UAVs with steerable wheels
-	RunwayTakeoff _runway_takeoff;
-
-	bool _skipping_takeoff_detection{false};
-
-	// AUTO LANDING
-
-	// corresponds to param FW_LND_NUDGE
-	enum LandingNudgingOption {
-		kNudgingDisabled = 0,
-		kNudgeApproachAngle,
-		kNudgeApproachPath
-	};
-
-	// [us] Start time of the landing approach. If a fixed-wing landing pattern is used, this timer starts *after any
-	// orbit to altitude only when the aircraft has entered the final *straight approach.
-	hrt_abstime _time_started_landing{0};
-
-	// [m] lateral touchdown position offset manually commanded during landing
-	float _lateral_touchdown_position_offset{0.0f};
-
-	// [m] relative vector from land point to approach entrance (NE)
-	Vector2f _landing_approach_entrance_offset_vector{};
-
-	// [m] relative height above land point
-	float _landing_approach_entrance_rel_alt{0.0f};
-
-	uint8_t _landing_abort_status{position_controller_landing_status_s::NOT_ABORTED};
-
-	// organize flare states XXX: need to split into a separate class at some point!
-	struct FlareStates {
-		bool flaring{false};
-		hrt_abstime start_time{0}; // [us]
-		float initial_height_rate_setpoint{0.0f}; // [m/s]
-		float initial_throttle_setpoint{0.0f};
-	} _flare_states;
-
-	// [m] last terrain estimate which was valid
-	float _last_valid_terrain_alt_estimate{0.0f};
-
-	// [us] time at which we had last valid terrain alt
-	hrt_abstime _last_time_terrain_alt_was_valid{0};
-
-	enum TerrainEstimateUseOnLanding {
-		kDisableTerrainEstimation = 0,
-		kTriggerFlareWithTerrainEstimate,
-		kFollowTerrainRelativeLandingGlideSlope
-	};
 
 	// AIRSPEED
 
 	float _airspeed_eas{0.f};
 	float _eas2tas{1.f};
 	bool _airspeed_valid{false};
-	float _air_density{atmosphere::kAirDensitySeaLevelStandardAtmos};
-
-	// [us] last time airspeed was received. used to detect timeouts.
-	hrt_abstime _time_airspeed_last_valid{0};
-
-	// WIND
-
-	// [m/s] wind velocity vector
-	Vector2f _wind_vel{0.0f, 0.0f};
-
-	bool _wind_valid{false};
-
-	hrt_abstime _time_wind_last_received{0}; // [us]
-
-	// TECS
-
-	// total energy control system - airspeed / altitude control
-	TECS _tecs;
-
-	bool _tecs_is_running{false};
-
-	// VTOL / TRANSITION
-	bool _is_vtol_tailsitter{false};
-	matrix::Vector2d _transition_waypoint{(double)NAN, (double)NAN};
-
-	// ESTIMATOR RESET COUNTERS
-
-	// captures the number of times the estimator has reset the horizontal position
-	uint8_t _pos_reset_counter{0};
-
-	// captures the number of times the estimator has reset the altitude state
-	uint8_t _alt_reset_counter{0};
-
-	// LATERAL-DIRECTIONAL GUIDANCE
-
-	// CLosest point on path to track
-	matrix::Vector2f _closest_point_on_path;
-
-	// nonlinear path following guidance - lateral-directional position control
-	NPFG _npfg;
-	bool _need_report_npfg_uncertain_condition{false}; ///< boolean if reporting of uncertain npfg output condition is needed
-	hrt_abstime _time_since_first_reduced_roll{0U}; ///< absolute time since start when entering reduced roll angle for the first time
-	hrt_abstime _time_since_last_npfg_call{0U}; 	///< absolute time since start when the npfg reduced roll angle calculations was last performed
-
-	PerformanceModel _performance_model;
-
-	// LANDING GEAR
-	int8_t _new_landing_gear_position{landing_gear_s::GEAR_KEEP};
-
-	// FLAPS/SPOILERS
-	float _flaps_setpoint{0.f};
-	float _spoilers_setpoint{0.f};
-
-	hrt_abstime _time_in_fixed_bank_loiter{0}; // [us]
-	float _min_current_sp_distance_xy{FLT_MAX};
-	float _target_bearing{0.0f}; // [rad]
+	float _water_density = 1000;
 
 	// Update our local parameter cache.
 	void parameters_update();
@@ -433,16 +295,10 @@ private:
 	void vehicle_command_poll();
 	void vehicle_control_mode_poll();
 	void vehicle_status_poll();
-	void wind_poll();
 
 	void status_publish();
-	void landing_status_publish();
-	void tecs_status_publish(float alt_sp, float equivalent_airspeed_sp, float true_airspeed_derivative_raw,
-				 float throttle_trim);
+
 	void publishLocalPositionSetpoint(const position_setpoint_s &current_waypoint);
-	float getLoadFactor();
-
-
 
 
 	/**
@@ -456,19 +312,6 @@ private:
 	 */
 	void control_auto_position(const float control_interval, const Vector2d &curr_pos, const Vector2f &ground_speed,
 				   const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr);
-
-	/**
-	 * @brief Vehicle control for loiter waypoints.
-	 *
-	 * @param control_interval Time since last position control call [s]
-	 * @param curr_pos Current 2D local position vector of vehicle [m]
-	 * @param ground_speed Local 2D ground speed of vehicle [m/s]
-	 * @param pos_sp_prev previous position setpoint
-	 * @param pos_sp_curr current position setpoint
-	 * @param pos_sp_next next position setpoint
-	 */
-	void control_auto_loiter(const float control_interval, const Vector2d &curr_pos, const Vector2f &ground_speed,
-				 const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr, const position_setpoint_s &pos_sp_next);
 
 
 	/**
@@ -494,46 +337,6 @@ private:
 	void control_auto_velocity(const float control_interval, const Vector2d &curr_pos, const Vector2f &ground_speed,
 				   const position_setpoint_s &pos_sp_curr);
 
-	/**
-	 * @brief Controls automatic takeoff.
-	 *
-	 * @param now Current system time [us]
-	 * @param control_interval Time since last position control call [s]
-	 * @param global_position Vechile global position [deg]
-	 * @param ground_speed Local 2D ground speed of vehicle [m/s]
-	 * @param pos_sp_curr current position setpoint
-	 */
-	void control_auto_takeoff(const hrt_abstime &now, const float control_interval, const Vector2d &global_position,
-				  const Vector2f &ground_speed, const position_setpoint_s &pos_sp_curr);
-
-	/**
-	 * @brief Controls automatic landing with straight approach.
-	 *
-	 * To be used in Missions that contain a loiter down followed by a land waypoint.
-	 *
-	 * @param now Current system time [us]
-	 * @param control_interval Time since last position control call [s]
-	 * @param control_interval Time since the last position control update [s]
-	 * @param ground_speed Local 2D ground speed of vehicle [m/s]
-	 * @param pos_sp_prev previous position setpoint
-	 * @param pos_sp_curr current position setpoint
-	 */
-	void control_auto_landing_straight(const hrt_abstime &now, const float control_interval, const Vector2f &ground_speed,
-					   const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr);
-
-	/**
-	 * @brief Controls automatic landing with circular final appraoch.
-	 *
-	 * To be used outside of Mission landings. Vehicle will orbit down around the landing position setpoint until flaring.
-	 *
-	 * @param now Current system time [us]
-	 * @param control_interval Time since last position control call [s]
-	 * @param control_interval Time since the last position control update [s]
-	 * @param ground_speed Local 2D ground speed of vehicle [m/s]
-	 * @param pos_sp_curr current position setpoint
-	 */
-	void control_auto_landing_circular(const hrt_abstime &now, const float control_interval, const Vector2f &ground_speed,
-					   const position_setpoint_s &pos_sp_curr);
 
 	/* manual control methods */
 
@@ -555,72 +358,9 @@ private:
 	 */
 	void control_manual_position(const float control_interval, const Vector2d &curr_pos, const Vector2f &ground_speed);
 
-	/**
-	 * @brief Controls flying towards a transition waypoint and then transitioning to MC mode.
-	 *
-	 * @param control_interval Time since last position control call [s]
-	 * @param ground_speed Local 2D ground speed of vehicle [m/s]
-	 * @param pos_sp_curr current position setpoint
-	 */
-	void control_backtransition(const float control_interval, const Vector2f &ground_speed,
-				    const position_setpoint_s &pos_sp_curr);
-
-	float get_tecs_pitch();
-	float get_tecs_thrust();
 
 	float get_manual_airspeed_setpoint();
 
-	/**
-	 * @brief Returns an adapted calibrated airspeed setpoint
-	 *
-	 * Adjusts the setpoint for wind, accelerated stall, and slew rates.
-	 *
-	 * @param control_interval Time since the last position control update [s]
-	 * @param calibrated_airspeed_setpoint Calibrated airspeed septoint (generally from the position setpoint) [m/s]
-	 * @param calibrated_min_airspeed Minimum calibrated airspeed [m/s]
-	 * @param ground_speed Vehicle ground velocity vector (NE) [m/s]
-	 * @param in_takeoff_situation Vehicle is currently in a takeoff situation
-	 * @return Adjusted calibrated airspeed setpoint [m/s]
-	 */
-	float adapt_airspeed_setpoint(const float control_interval, float calibrated_airspeed_setpoint,
-				      float calibrated_min_airspeed, const Vector2f &ground_speed, bool in_takeoff_situation = false);
-
-	void reset_takeoff_state();
-	void reset_landing_state();
-
-	/**
-	 * @brief Decides which control mode to execute.
-	 *
-	 * May also change the position setpoint type depending on the desired behavior.
-	 *
-	 * @param now Current system time [us]
-	 */
-	void set_control_mode_current(const hrt_abstime &now);
-
-	void publishOrbitStatus(const position_setpoint_s pos_sp);
-
-	SlewRate<float> _airspeed_slew_rate_controller;
-	SlewRate<float> _roll_slew_rate;
-
-	/**
-	 * @brief A wrapper function to call the TECS implementation
-	 *
-	 * @param control_interval Time since the last position control update [s]
-	 * @param alt_sp Altitude setpoint, AMSL [m]
-	 * @param airspeed_sp Calibrated airspeed setpoint [m/s]
-	 * @param pitch_min_rad Nominal pitch angle command minimum [rad]
-	 * @param pitch_max_rad Nominal pitch angle command maximum [rad]
-	 * @param throttle_min Minimum throttle command [0,1]
-	 * @param throttle_max Maximum throttle command [0,1]
-	 * @param desired_max_sink_rate The desired max sink rate commandable when altitude errors are large [m/s]
-	 * @param desired_max_climb_rate The desired max climb rate commandable when altitude errors are large [m/s]
-	 * @param disable_underspeed_detection True if underspeed detection should be disabled
-	 * @param hgt_rate_sp Height rate setpoint [m/s]
-	 */
-	void tecs_update_pitch_throttle(const float control_interval, float alt_sp, float airspeed_sp, float pitch_min_rad,
-					float pitch_max_rad, float throttle_min, float throttle_max,
-					const float desired_max_sink_rate, const float desired_max_climb_rate,
-					bool disable_underspeed_detection = false, float hgt_rate_sp = NAN);
 
 	/**
 	 * @brief Constrains the roll angle setpoint near ground to avoid wingtip strike.
@@ -632,251 +372,11 @@ private:
 	 */
 	float constrainRollNearGround(const float roll_setpoint, const float altitude, const float terrain_altitude) const;
 
-	/**
-	 * @brief Calculates the touchdown position for landing with optional manual lateral adjustments.
-	 *
-	 * Manual inputs (from the remote) are used to command a rate at which the position moves and the integrated
-	 * position is bounded. This is useful for manually adjusting the landing point in real time when map or GNSS
-	 * errors cause an offset from the desired landing vector.
-	 *
-	 * @param control_interval Time since the last position control update [s]
-	 * @param local_land_position Originally commanded local land position (NE) [m]
-	 * @return (Nudged) Local touchdown position (NE) [m]
-	 */
-	Vector2f calculateTouchdownPosition(const float control_interval, const Vector2f &local_land_position);
-
-	/**
-	 * @brief Calculates the vector from landing approach entrance to touchdown point
-	 *
-	 * NOTE: calculateTouchdownPosition() MUST be called before this method
-	 *
-	 * @return Landing approach vector [m]
-	 */
-	Vector2f calculateLandingApproachVector() const;
-
-	/**
-	 * @brief Returns a terrain altitude estimate with consideration of altimeter measurements.
-	 *
-	 * @param now Current system time [us]
-	 * @param land_point_altitude Altitude (AMSL) of the land point [m]
-	 * @param abort_on_terrain_measurement_timeout Abort if distance to ground estimation doesn't get valid when we expect it to
-	 * @param abort_on_terrain_timeout Abort if distance to ground estimation is invalid after being valid before
-	 * @return Terrain altitude (AMSL) [m]
-	 */
-	float getLandingTerrainAltitudeEstimate(const hrt_abstime &now, const float land_point_altitude,
-						const bool abort_on_terrain_measurement_timeout, const bool abort_on_terrain_timeout);
-
-	/**
-	 * @brief Initializes landing states
-	 *
-	 * @param now Current system time [us]
-	 * @param pos_sp_prev Previous position setpoint
-	 * @param land_point_alt Landing point altitude setpoint AMSL [m]
-	 * @param local_position Local aircraft position (NE) [m]
-	 * @param local_land_point Local land point (NE) [m]
-	 */
-	void initializeAutoLanding(const hrt_abstime &now, const position_setpoint_s &pos_sp_prev,
-				   const float land_point_alt, const Vector2f &local_position, const Vector2f &local_land_point);
-
-	/*
-	 * Waypoint handling logic following closely to the ECL_L1_Pos_Controller
-	 * method of the same name. Takes two waypoints, steering the vehicle to track
-	 * the line segment between them.
-	 *
-	 * @param[in] start_waypoint Segment starting position in local coordinates. (N,E) [m]
-	 * @param[in] end_waypoint Segment end position in local coordinates. (N,E) [m]
-	 * @param[in] vehicle_pos Vehicle position in local coordinates. (N,E) [m]
-	 * @param[in] ground_vel Vehicle ground velocity vector [m/s]
-	 * @param[in] wind_vel Wind velocity vector [m/s]
-	 */
-	void navigateWaypoints(const matrix::Vector2f &start_waypoint, const matrix::Vector2f &end_waypoint,
-			       const matrix::Vector2f &vehicle_pos, const matrix::Vector2f &ground_vel,
-			       const matrix::Vector2f &wind_vel);
-
-	/*
-	 * Takes one waypoint and steers the vehicle towards this.
-	 *
-	 * NOTE: this *will lead to "flowering" behavior if no higher level state machine or
-	 * switching condition changes the waypoint.
-	 *
-	 * @param[in] waypoint_pos Waypoint position in local coordinates. (N,E) [m]
-	 * @param[in] vehicle_pos Vehicle position in local coordinates. (N,E) [m]
-	 * @param[in] ground_vel Vehicle ground velocity vector [m/s]
-	 * @param[in] wind_vel Wind velocity vector [m/s]
-	 */
-	void navigateWaypoint(const matrix::Vector2f &waypoint_pos, const matrix::Vector2f &vehicle_pos,
-			      const matrix::Vector2f &ground_vel, const matrix::Vector2f &wind_vel);
-
-	/*
-	 * Line (infinite) following logic. Two points on the line are used to define the
-	 * line in 2D space (first to second point determines the direction). Determines the
-	 * relevant parameters for evaluating the NPFG guidance law, then updates control setpoints.
-	 *
-	 * @param[in] point_on_line_1 Arbitrary first position on line in local coordinates. (N,E) [m]
-	 * @param[in] point_on_line_2 Arbitrary second position on line in local coordinates. (N,E) [m]
-	 * @param[in] vehicle_pos Vehicle position in local coordinates. (N,E) [m]
-	 * @param[in] ground_vel Vehicle ground velocity vector [m/s]
-	 * @param[in] wind_vel Wind velocity vector [m/s]
-	 */
-	void navigateLine(const Vector2f &point_on_line_1, const Vector2f &point_on_line_2, const Vector2f &vehicle_pos,
-			  const Vector2f &ground_vel, const Vector2f &wind_vel);
-
-	/*
-	 * Line (infinite) following logic. One point on the line and a line bearing are used to define
-	 * the line in 2D space. Determines the relevant parameters for evaluating the NPFG guidance law,
-	 * then updates control setpoints.
-	 *
-	 * @param[in] point_on_line Arbitrary position on line in local coordinates. (N,E) [m]
-	 * @param[in] line_bearing Line bearing [rad] (from north)
-	 * @param[in] vehicle_pos Vehicle position in local coordinates. (N,E) [m]
-	 * @param[in] ground_vel Vehicle ground velocity vector [m/s]
-	 * @param[in] wind_vel Wind velocity vector [m/s]
-	 */
-	void navigateLine(const Vector2f &point_on_line, const float line_bearing, const Vector2f &vehicle_pos,
-			  const Vector2f &ground_vel, const Vector2f &wind_vel);
-
-	/*
-	 * Loitering (unlimited) logic. Takes loiter center, radius, and direction and
-	 * determines the relevant parameters for evaluating the NPFG guidance law,
-	 * then updates control setpoints.
-	 *
-	 * @param[in] loiter_center The position of the center of the loiter circle [m]
-	 * @param[in] vehicle_pos Vehicle position in local coordinates. (N,E) [m]
-	 * @param[in] radius Loiter radius [m]
-	 * @param[in] loiter_direction_counter_clockwise Specifies loiter direction
-	 * @param[in] ground_vel Vehicle ground velocity vector [m/s]
-	 * @param[in] wind_vel Wind velocity vector [m/s]
-	 */
-	void navigateLoiter(const matrix::Vector2f &loiter_center, const matrix::Vector2f &vehicle_pos,
-			    float radius, bool loiter_direction_counter_clockwise, const matrix::Vector2f &ground_vel,
-			    const matrix::Vector2f &wind_vel);
-
-	/*
-	 * Path following logic. Takes poisiton, path tangent, curvature and
-	 * then updates control setpoints to follow a path setpoint.
-	 *
-	 * TODO: deprecate this function with a proper API to NPFG.
-	 *
-	 * @param[in] vehicle_pos vehicle_pos Vehicle position in local coordinates. (N,E) [m]
-	 * @param[in] position_setpoint closest point on a path in local coordinates. (N,E) [m]
-	 * @param[in] tangent_setpoint unit tangent vector of the path [m]
-	 * @param[in] ground_vel Vehicle ground velocity vector [m/s]
-	 * @param[in] wind_vel Wind velocity vector [m/s]
-	 * @param[in] curvature of the path setpoint [1/m]
-	 */
-	void navigatePathTangent(const matrix::Vector2f &vehicle_pos, const matrix::Vector2f &position_setpoint,
-				 const matrix::Vector2f &tangent_setpoint,
-				 const matrix::Vector2f &ground_vel, const matrix::Vector2f &wind_vel, const float &curvature);
-
-	/*
-	 * Navigate on a fixed bearing.
-	 *
-	 * This only holds a certain (ground relative) direction and does not perform
-	 * cross track correction. Helpful for semi-autonomous modes.
-	 *
-	 * @param[in] vehicle_pos vehicle_pos Vehicle position in local coordinates. (N,E) [m]
-	 * @param[in] bearing Bearing angle [rad]
-	 * @param[in] ground_vel Vehicle ground velocity vector [m/s]
-	 * @param[in] wind_vel Wind velocity vector [m/s]
-	 */
-	void navigateBearing(const matrix::Vector2f &vehicle_pos, float bearing, const matrix::Vector2f &ground_vel,
-			     const matrix::Vector2f &wind_vel);
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::FW_GND_SPD_MIN>) _param_fw_gnd_spd_min,
 
-		(ParamFloat<px4::params::FW_PN_R_SLEW_MAX>) _param_fw_pn_r_slew_max,
-		(ParamFloat<px4::params::FW_R_LIM>) _param_fw_r_lim,
 
-		(ParamFloat<px4::params::NPFG_PERIOD>) _param_npfg_period,
-		(ParamFloat<px4::params::NPFG_DAMPING>) _param_npfg_damping,
-		(ParamBool<px4::params::NPFG_LB_PERIOD>) _param_npfg_en_period_lb,
-		(ParamBool<px4::params::NPFG_UB_PERIOD>) _param_npfg_en_period_ub,
-		(ParamBool<px4::params::NPFG_TRACK_KEEP>) _param_npfg_en_track_keeping,
-		(ParamBool<px4::params::NPFG_EN_MIN_GSP>) _param_npfg_en_min_gsp,
-		(ParamBool<px4::params::NPFG_WIND_REG>) _param_npfg_en_wind_reg,
-		(ParamFloat<px4::params::NPFG_GSP_MAX_TK>) _param_npfg_track_keeping_gsp_max,
-		(ParamFloat<px4::params::NPFG_ROLL_TC>) _param_npfg_roll_time_const,
-		(ParamFloat<px4::params::NPFG_SW_DST_MLT>) _param_npfg_switch_distance_multiplier,
-		(ParamFloat<px4::params::NPFG_PERIOD_SF>) _param_npfg_period_safety_factor,
-
-		(ParamFloat<px4::params::FW_LND_AIRSPD>) _param_fw_lnd_airspd,
-		(ParamFloat<px4::params::FW_LND_ANG>) _param_fw_lnd_ang,
-		(ParamFloat<px4::params::FW_LND_FL_PMAX>) _param_fw_lnd_fl_pmax,
-		(ParamFloat<px4::params::FW_LND_FL_PMIN>) _param_fw_lnd_fl_pmin,
-		(ParamFloat<px4::params::FW_LND_FLALT>) _param_fw_lnd_flalt,
-		(ParamFloat<px4::params::FW_LND_THRTC_SC>) _param_fw_thrtc_sc,
-		(ParamBool<px4::params::FW_LND_EARLYCFG>) _param_fw_lnd_earlycfg,
-		(ParamInt<px4::params::FW_LND_USETER>) _param_fw_lnd_useter,
-
-		(ParamFloat<px4::params::FW_P_LIM_MAX>) _param_fw_p_lim_max,
-		(ParamFloat<px4::params::FW_P_LIM_MIN>) _param_fw_p_lim_min,
-
-		(ParamFloat<px4::params::FW_T_HRATE_FF>) _param_fw_t_hrate_ff,
-		(ParamFloat<px4::params::FW_T_ALT_TC>) _param_fw_t_h_error_tc,
-		(ParamFloat<px4::params::FW_T_F_ALT_ERR>) _param_fw_t_fast_alt_err,
-		(ParamFloat<px4::params::FW_T_THR_INTEG>) _param_fw_t_thr_integ,
-		(ParamFloat<px4::params::FW_T_I_GAIN_PIT>) _param_fw_t_I_gain_pit,
-		(ParamFloat<px4::params::FW_T_PTCH_DAMP>) _param_fw_t_ptch_damp,
-		(ParamFloat<px4::params::FW_T_RLL2THR>) _param_fw_t_rll2thr,
-		(ParamFloat<px4::params::FW_T_SINK_MAX>) _param_fw_t_sink_max,
-		(ParamFloat<px4::params::FW_T_SPDWEIGHT>) _param_fw_t_spdweight,
-		(ParamFloat<px4::params::FW_T_TAS_TC>) _param_fw_t_tas_error_tc,
-		(ParamFloat<px4::params::FW_T_THR_DAMPING>) _param_fw_t_thr_damping,
-		(ParamFloat<px4::params::FW_T_VERT_ACC>) _param_fw_t_vert_acc,
-		(ParamFloat<px4::params::FW_T_STE_R_TC>) _param_ste_rate_time_const,
-		(ParamFloat<px4::params::FW_T_SEB_R_FF>) _param_seb_rate_ff,
-		(ParamFloat<px4::params::FW_T_CLMB_R_SP>) _param_climbrate_target,
-		(ParamFloat<px4::params::FW_T_SINK_R_SP>) _param_sinkrate_target,
-		(ParamFloat<px4::params::FW_T_SPD_STD>) _param_speed_standard_dev,
-		(ParamFloat<px4::params::FW_T_SPD_DEV_STD>) _param_speed_rate_standard_dev,
-		(ParamFloat<px4::params::FW_T_SPD_PRC_STD>) _param_process_noise_standard_dev,
-
-		(ParamFloat<px4::params::FW_THR_IDLE>) _param_fw_thr_idle,
-		(ParamFloat<px4::params::FW_THR_MAX>) _param_fw_thr_max,
-		(ParamFloat<px4::params::FW_THR_MIN>) _param_fw_thr_min,
-		(ParamFloat<px4::params::FW_THR_SLEW_MAX>) _param_fw_thr_slew_max,
-
-		(ParamFloat<px4::params::FW_FLAPS_LND_SCL>) _param_fw_flaps_lnd_scl,
-		(ParamFloat<px4::params::FW_FLAPS_TO_SCL>) _param_fw_flaps_to_scl,
-		(ParamFloat<px4::params::FW_SPOILERS_LND>) _param_fw_spoilers_lnd,
-		(ParamFloat<px4::params::FW_SPOILERS_DESC>) _param_fw_spoilers_desc,
-
-		(ParamInt<px4::params::FW_POS_STK_CONF>) _param_fw_pos_stk_conf,
-
-		(ParamInt<px4::params::FW_GPSF_LT>) _param_nav_gpsf_lt,
-		(ParamFloat<px4::params::FW_GPSF_R>) _param_nav_gpsf_r,
-
-		// external parameters
-		(ParamBool<px4::params::FW_USE_AIRSPD>) _param_fw_use_airspd,
-
-		(ParamFloat<px4::params::FW_PSP_OFF>) _param_fw_psp_off,
-
-		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad,
-
-		(ParamFloat<px4::params::FW_TKO_PITCH_MIN>) _takeoff_pitch_min,
-
-		(ParamFloat<px4::params::NAV_FW_ALT_RAD>) _param_nav_fw_alt_rad,
-
-		(ParamFloat<px4::params::FW_WING_SPAN>) _param_fw_wing_span,
-		(ParamFloat<px4::params::FW_WING_HEIGHT>) _param_fw_wing_height,
-
-		(ParamFloat<px4::params::RWTO_NPFG_PERIOD>) _param_rwto_npfg_period,
-		(ParamBool<px4::params::RWTO_NUDGE>) _param_rwto_nudge,
-
-		(ParamFloat<px4::params::FW_LND_FL_TIME>) _param_fw_lnd_fl_time,
-		(ParamFloat<px4::params::FW_LND_FL_SINK>) _param_fw_lnd_fl_sink,
-		(ParamFloat<px4::params::FW_LND_TD_TIME>) _param_fw_lnd_td_time,
-		(ParamFloat<px4::params::FW_LND_TD_OFF>) _param_fw_lnd_td_off,
-		(ParamInt<px4::params::FW_LND_NUDGE>) _param_fw_lnd_nudge,
-		(ParamInt<px4::params::FW_LND_ABORT>) _param_fw_lnd_abort,
-
-		(ParamFloat<px4::params::FW_WIND_ARSP_SC>) _param_fw_wind_arsp_sc,
-
-		(ParamFloat<px4::params::FW_TKO_AIRSPD>) _param_fw_tko_airspd,
-
-		(ParamFloat<px4::params::RWTO_PSP>) _param_rwto_psp,
-		(ParamBool<px4::params::FW_LAUN_DETCN_ON>) _param_fw_laun_detcn_on
 	)
 
 };

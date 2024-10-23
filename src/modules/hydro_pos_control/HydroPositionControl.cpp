@@ -48,28 +48,18 @@ using matrix::Vector2d;
 using matrix::Vector3f;
 using matrix::wrap_pi;
 
-HydroPositionControl::HydroPositionControl(bool vtol) :
+HydroPositionControl::HydroPositionControl() :
 	ModuleParams(nullptr),
 	WorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers),
 	_attitude_sp_pub(vtol ? ORB_ID(fw_virtual_attitude_setpoint) : ORB_ID(vehicle_attitude_setpoint)),
-	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
-	_launchDetector(this),
-	_runway_takeoff(this)
+	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
 {
 
 	// limit to 50 Hz
 	_local_pos_sub.set_interval_ms(20);
 
 	_pos_ctrl_status_pub.advertise();
-	_pos_ctrl_landing_status_pub.advertise();
-	_tecs_status_pub.advertise();
-	_launch_detection_status_pub.advertise();
-	_landing_gear_pub.advertise();
 
-	_flaps_setpoint_pub.advertise();
-	_spoilers_setpoint_pub.advertise();
-
-	_airspeed_slew_rate_controller.setSlewRate(ASPD_SP_SLEW_RATE);
 
 	/* fetch initial parameter values */
 	parameters_update();
