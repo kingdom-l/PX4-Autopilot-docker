@@ -39,6 +39,7 @@
  */
 
 #include "Commander.hpp"
+#include <include/HyModeName.hpp>
 
 /* commander module headers */
 #include "Arming/ArmAuthorization/ArmAuthorization.h"
@@ -587,7 +588,17 @@ transition_result_t Commander::arm(arm_disarm_reason_t calling_reason, bool run_
 	}
 
 	if (run_preflight_checks) {
-		if (_vehicle_control_mode.flag_control_manual_enabled) {
+		if(_vehicle_status.nav_state == HYDRO_MODE_STABILIZED || _vehicle_status.nav_state == HYDRO_MODE_ACRO ||
+		    _vehicle_status.nav_state == HYDRO_MODE_MANUAL){
+			if (!_failsafe_flags.manual_control_signal_lost && !_is_throttle_low){
+				mavlink_log_critical(&_mavlink_log_pub, "Arming denied: high throttle\t");
+				events::send(events::ID("commander_arm_denied_throttle_high_hydro"), {events::Log::Critical, events::LogInternal::Info},
+						"Arming denied: high throttle in hydro");
+				tune_negative(true);
+				return TRANSITION_DENIED;
+			}
+		}
+		else if (_vehicle_control_mode.flag_control_manual_enabled) {
 
 			if (_vehicle_control_mode.flag_control_climb_rate_enabled &&
 			    !_failsafe_flags.manual_control_signal_lost && _is_throttle_above_center) {
