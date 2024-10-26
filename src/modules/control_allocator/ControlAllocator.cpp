@@ -423,10 +423,6 @@ ControlAllocator::Run()
 	}
 
 	update_allocate_hydro_state();
-	{
-		_hydro_motors_sub.update(&_hydro_motors);
-		_hydro_servos_sub.update(&_hydro_servos);
-	}
 
 	// Guard against too small (< 0.2ms) and too large (> 20ms) dt's.
 	const hrt_abstime now = hrt_absolute_time();
@@ -726,6 +722,11 @@ ControlAllocator::publish_actuator_controls()
 		return;
 	}
 
+	{
+		_hydro_motors_sub.update(&_hydro_motors);
+		_hydro_servos_sub.update(&_hydro_servos);
+	}
+
 	actuator_motors_s actuator_motors;
 	actuator_motors.timestamp = hrt_absolute_time();
 	actuator_motors.timestamp_sample = _timestamp_sample;
@@ -739,7 +740,7 @@ ControlAllocator::publish_actuator_controls()
 	int actuator_idx = 0;
 	int actuator_idx_matrix[ActuatorEffectiveness::MAX_NUM_MATRICES] {};
 
-	uint32_t stopped_motors = _actuator_effectiveness->getStoppedMotors() | _handled_motor_failure_bitmask;
+	// uint32_t stopped_motors = _actuator_effectiveness->getStoppedMotors() | _handled_motor_failure_bitmask;
 
 	// motors
 	int motors_idx;
@@ -747,13 +748,30 @@ ControlAllocator::publish_actuator_controls()
 	for (motors_idx = 0; motors_idx < _num_actuators[0] && motors_idx < actuator_motors_s::NUM_CONTROLS; motors_idx++) {
 		int selected_matrix = _control_allocation_selection_indexes[actuator_idx];
 		float actuator_sp = _control_allocation[selected_matrix]->getActuatorSetpoint()(actuator_idx_matrix[selected_matrix]);
+		actuator_sp = _hydro_motors.control[motors_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
 		actuator_motors.control[motors_idx] = PX4_ISFINITE(actuator_sp) ? actuator_sp : NAN;
 
-		actuator_motors.control[motors_idx] = _hydro_motors.control[motors_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
-
-		if (stopped_motors & (1u << motors_idx)) {
+		// stopMaskedMotorsWithZeroThrust函数中的内容移到这里，取代原来的功能
+		if(PX4_ISFINITE(actuator_sp))
+		{
+			actuator_sp = math::constrain(actuator_sp, -1.0f, 1.0f);
+			if(actuator_sp < 0.02f && actuator_sp > -0.02f) // Stop motor if its setpoint is below 2%. This value was determined empirically (RC stick inaccuracy)
+			{
+				actuator_motors.control[motors_idx] = NAN;
+			}
+			else
+			{
+				actuator_motors.control[motors_idx] = actuator_sp;
+			}
+		}
+		else
+		{
 			actuator_motors.control[motors_idx] = NAN;
 		}
+		// 会关闭电机，导致无法解锁
+		// if (stopped_motors & (1u << motors_idx)) {
+		// 	actuator_motors.control[motors_idx] = NAN;
+		// }
 
 		++actuator_idx_matrix[selected_matrix];
 		++actuator_idx;
