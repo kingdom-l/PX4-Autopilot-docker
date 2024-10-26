@@ -224,7 +224,7 @@ void HydroControlAllocator::Run()
 	if (_hydro_torque_setpoint_sub.update(&hydro_torque_setpoint)) {
 		_wrench_sp(2) = hydro_torque_setpoint.xyz[0];
 		_wrench_sp(3) = hydro_torque_setpoint.xyz[1];
-		_wrench_sp(4) = hydro_torque_setpoint.xyz[2];
+		_wrench_sp(4) = hydro_torque_setpoint.xyz[2] * 0.f; // yaw轴扭矩暂时置零
 		PX4_INFO("_torque_sp: %f %f %f", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 		do_update = true;
 		_timestamp_sample = hydro_torque_setpoint.timestamp_sample;
