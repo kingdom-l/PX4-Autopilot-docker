@@ -748,7 +748,13 @@ ControlAllocator::publish_actuator_controls()
 	for (motors_idx = 0; motors_idx < _num_actuators[0] && motors_idx < actuator_motors_s::NUM_CONTROLS; motors_idx++) {
 		int selected_matrix = _control_allocation_selection_indexes[actuator_idx];
 		float actuator_sp = _control_allocation[selected_matrix]->getActuatorSetpoint()(actuator_idx_matrix[selected_matrix]);
-		actuator_sp = _hydro_motors.control[motors_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
+
+		// WaterOnly/WaterAir状态下，接收hydro_thrust_setpoint/hydro_torque_setpoint
+		if(_allocate_hydro_state != AllocaterHydroState::AirOnly)
+		{
+			actuator_sp = _hydro_motors.control[motors_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
+		}
+
 		actuator_motors.control[motors_idx] = PX4_ISFINITE(actuator_sp) ? actuator_sp : NAN;
 
 		// stopMaskedMotorsWithZeroThrust函数中的内容移到这里，取代原来的功能
@@ -792,7 +798,11 @@ ControlAllocator::publish_actuator_controls()
 			float actuator_sp = _control_allocation[selected_matrix]->getActuatorSetpoint()(actuator_idx_matrix[selected_matrix]);
 			actuator_servos.control[servos_idx] = PX4_ISFINITE(actuator_sp) ? actuator_sp : NAN;
 
-			actuator_servos.control[servos_idx] = _hydro_servos.control[servos_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
+			// WaterOnly/WaterAir状态下，接收hydro_thrust_setpoint/hydro_torque_setpoint
+			if(_allocate_hydro_state != AllocaterHydroState::AirOnly)
+			{
+				actuator_servos.control[servos_idx] = _hydro_servos.control[servos_idx]; // 使用hydro_control_allocator的结果覆盖掉control_allocator的结果
+			}
 
 			++actuator_idx_matrix[selected_matrix];
 			++actuator_idx;
