@@ -34,10 +34,8 @@
 /**
  * @file hydro_rate_control_params.c
  *
- * Parameters defined by the fixed-wing rate control task
+ * Parameters defined by the hydro rate control task
  *
- * @author Lorenz Meier <lorenz@px4.io>
- * @author Thomas Gubler <thomas@px4.io>
  */
 
 /**
