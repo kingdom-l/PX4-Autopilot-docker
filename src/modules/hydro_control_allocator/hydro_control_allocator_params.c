@@ -248,6 +248,8 @@ PARAM_DEFINE_FLOAT(HY_WING_ANG_MAX, 0.7);
 /**
  * Index of Hydro Right Motor in Actuators Setup
  *
+ * hy_motro_l motor1      hy_motor_r motor2
+ *
  *
  * @boolean
  * @group Hydro Control Allocator
@@ -267,7 +269,11 @@ PARAM_DEFINE_INT32(HY_RMOTOR_IDX, 2);
 /**
  * Index of Hydro Horizontal Tail Servo in Actuators Setup
  *
- *
+ * servo_r servo1
+ * servo_l servo2
+ * htail_servo servo3
+ * hy_servo_r servo4
+ * hy_servo_l servo5
  *
  * @boolean
  * @group Hydro Control Allocator

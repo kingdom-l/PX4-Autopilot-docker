@@ -71,12 +71,12 @@ HydroControlAllocator::init()
 void
 HydroControlAllocator::parameters_update()
 {
-	_st_info.x2 = 0;
+	_st_info.x2 = 0.1; // 0.1对计算水翼电机推力有影响
 	_st_info.y2 = 0;
-	_st_info.z2 = 0.2;
+	_st_info.z2 = 0.1;
 	_st_info.yT = 0.1;
 	_st_info.yh = 0.1;
-	_st_info.xe = 0.2;
+	_st_info.xe = 0.3;
 
 	_hy_effectiveness(0,0) = 1; _hy_effectiveness(0,1) = 0; _hy_effectiveness(0,2) = 1;
 	_hy_effectiveness(0,3) = 0; _hy_effectiveness(0,4) = 1; _hy_effectiveness(0,5) = 0;
@@ -174,7 +174,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 
 			x_new = x + delta_x;
 
-			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
+			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()); // rad
 			float x1_max = math::constrain((_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
 			x_new(1) = math::constrain(x_new(1), 0.f, x1_max);
 
@@ -195,7 +195,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 
 			x(0) = x(0) + delta_x;
 
-			x(0) = math::constrain(x(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get());
+			x(0) = math::constrain(x(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()); // rad
 			printf("func_out: %f %f %f \n", (double)J(1,0), (double)func_out(0), (double)func_out(1));
 		}
 	}
@@ -258,6 +258,7 @@ void HydroControlAllocator::Run()
 		}
 
 		_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
+		// 当需要产生低头力矩时，此处会给水翼电机的水平分力分配负值
 		matrix::Vector<float, 6> force_sp = _hy_mix * _wrench_sp;
 
 		_nf_params_hy_wr.Fx = force_sp(0);
@@ -267,16 +268,26 @@ void HydroControlAllocator::Run()
 		_nf_params_hy_htail.Fx = force_sp(4);
 		_nf_params_hy_htail.Fz = force_sp(5);
 
+		//  给水翼电机的水平分力分配负值的初步解决方法
+		if(sign(_nf_params_hy_wr.Fx) < 0)
+		{
+			_nf_params_hy_wr.Fx = 0.f;
+		}
+		if(sign(_nf_params_hy_wl.Fx) < 0)
+		{
+			_nf_params_hy_wl.Fx = 0.f;
+		}
+
 		float x_opt[3][2] = {{0, _nf_params_hy_wr.Fx/2},
 			       {0, _nf_params_hy_wl.Fx/2},
 			       {0, 0}}; // 初值取得可能有问题
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
 		optim(x_opt[2], _nf_params_hy_htail); // 需要考虑如何融合计算得到的两个舵偏角以及舵机角度归一化
-						      // 仅考虑尾翼的扭矩
+						      // 仅考虑尾翼的z轴分力
 
 		printf("htail: %f %f \n", (double)force_sp(4), (double)force_sp(5));
-		printf("gamma3: %f %f \n", (double)x_opt[2][0], (double)x_opt[2][1]);
+		printf("gamma3: %f rad, %f \n", (double)x_opt[2][0], (double)x_opt[2][1]);
 
 		//根据参数设置的对应关系填入数据并发送
 		actuator_motors_s hydro_motors_msg{0};
@@ -292,7 +303,8 @@ void HydroControlAllocator::Run()
 		hydro_motors_msg.control[_param_hy_rmotor_idx.get() - 1] = math::constrain(x_opt[0][1], 0.f, _param_hy_thrust_max.get()); // 右水翼电机
 		hydro_motors_msg.control[_param_hy_lmotor_idx.get() - 1] = math::constrain(x_opt[1][1], 0.f, _param_hy_thrust_max.get()); // 左水翼电机
 
-		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f); // 右水翼舵机
+		// 右水翼舵机，rad转为无量纲
+		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
 		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = math::constrain(x_opt[1][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
 		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(x_opt[2][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
 

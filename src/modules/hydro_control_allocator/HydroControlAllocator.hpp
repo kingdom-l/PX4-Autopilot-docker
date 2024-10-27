@@ -149,7 +149,7 @@ private:
 		(ParamFloat<px4::params::HY_HTAIL_CD>) _param_hy_htail_cd,
 		(ParamFloat<px4::params::HY_HTAIL_CD0>) _param_hy_htail_cd0,
 		(ParamFloat<px4::params::HY_HTAIL_AREA>) _param_hy_htail_area,
-		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max,
+		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max, // rad
 		(ParamInt<px4::params::HY_RMOTOR_IDX>) _param_hy_rmotor_idx,
 		(ParamInt<px4::params::HY_LMOTOR_IDX>) _param_hy_lmotor_idx,
 		(ParamInt<px4::params::HY_R_SV_IDX>) _param_hy_r_sv_idx,
