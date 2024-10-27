@@ -38,6 +38,7 @@ mode_control start
 #
 hydro_att_control start
 hydro_rate_control start
+hydro_pos_control start
 
 #
 # Start control allocator for hydro.
