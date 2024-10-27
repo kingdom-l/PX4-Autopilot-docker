@@ -32,17 +32,74 @@
  ****************************************************************************/
 
 /**
- * Path navigation roll slew rate limit.
+ * @file hydro_pos_control_params.c
  *
- * The maximum change in roll angle setpoint per second.
- * This limit is applied in all Auto modes, plus manual Position and Altitude modes.
+ * Parameters defined by the hydro position control task
  *
- * @unit deg/s
- * @min 0
- * @decimal 0
- * @increment 1
- * @group FW Path Control
  */
-//PARAM_DEFINE_FLOAT(FW_PN_R_SLEW_MAX, 90.0f);
 
+/**
+ * High proportional gain.
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_HIGH_P, 0.08f);
+
+/**
+ * High integrator gain.
+ *
+ * @unit m
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_HIGH_I, 0.0f);
+
+/**
+ * High derivative gain.
+ *
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_HIGH_D, 0.0f);
+
+/**
+ * Maximum pitch angle
+ *
+ * The maximum pitch angle setpoint setpoint for a height-rate or altitude controlled mode.
+ *
+ * @unit deg
+ * @min 0.0
+ * @max 60.0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_LIM_MAX, 30.0f);
+
+/**
+ * Hydro depth setpoint
+ *
+ * Thedepth setpoint for an altitude controlled mode.
+ *
+ * @unit deg
+ * @min 0.0
+ * @max 3.0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEPTH_SP, 0.f);
 
