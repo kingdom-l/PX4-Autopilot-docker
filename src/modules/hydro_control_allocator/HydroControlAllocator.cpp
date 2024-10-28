@@ -196,7 +196,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 			x(0) = x(0) + delta_x;
 
 			x(0) = math::constrain(x(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()); // rad
-			printf("func_out: %f %f %f \n", (double)J(1,0), (double)func_out(0), (double)func_out(1));
+			// printf("func_out: %f %f %f \n", (double)J(1,0), (double)func_out(0), (double)func_out(1));
 		}
 	}
 	x.copyTo(x_opt);
@@ -225,7 +225,7 @@ void HydroControlAllocator::Run()
 		_wrench_sp(2) = hydro_torque_setpoint.xyz[0];
 		_wrench_sp(3) = hydro_torque_setpoint.xyz[1];
 		_wrench_sp(4) = hydro_torque_setpoint.xyz[2] * 0.f; // yaw轴扭矩暂时置零
-		PX4_INFO("_torque_sp: %f %f %f", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
+		// PX4_INFO("_torque_sp: %f %f %f", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 		do_update = true;
 		_timestamp_sample = hydro_torque_setpoint.timestamp_sample;
 	}
@@ -286,8 +286,8 @@ void HydroControlAllocator::Run()
 		optim(x_opt[2], _nf_params_hy_htail); // 需要考虑如何融合计算得到的两个舵偏角以及舵机角度归一化
 						      // 仅考虑尾翼的z轴分力
 
-		printf("htail: %f %f \n", (double)force_sp(4), (double)force_sp(5));
-		printf("gamma3: %f rad, %f \n", (double)x_opt[2][0], (double)x_opt[2][1]);
+		// printf("htail: %f %f \n", (double)force_sp(4), (double)force_sp(5));
+		// printf("gamma3: %f rad, %f \n", (double)x_opt[2][0], (double)x_opt[2][1]);
 
 		//根据参数设置的对应关系填入数据并发送
 		actuator_motors_s hydro_motors_msg{0};
