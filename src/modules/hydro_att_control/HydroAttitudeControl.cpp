@@ -126,28 +126,31 @@ HydroAttitudeControl::auto_dive_poll(const float yaw_body)
 void
 HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
 {
-	if (_vehicle_status.nav_state == HYDRO_MODE_STABILIZED) {
+	if (_vhycontrol_mode.flag_control_manual_enabled) {
 
 		// Always copy the new manual setpoint, even if it wasn't updated, to fill the actuators with valid values
 		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
 
-			_att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_man_r_max.get());
+			if (_vhycontrol_mode.flag_control_attitude_enabled) {
 
-			_att_sp.pitch_body = -_manual_control_setpoint.pitch * radians(_param_hy_man_p_max.get())
-						+ radians(_param_hy_psp_off.get());
-			_att_sp.pitch_body = constrain(_att_sp.pitch_body, -radians(_param_hy_man_p_max.get()), radians(_param_hy_man_p_max.get()));
+				_att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_man_r_max.get());
 
-			_att_sp.yaw_body = yaw_body; // yaw is not controlled, so set setpoint to current yaw
-			_att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
+				_att_sp.pitch_body = -_manual_control_setpoint.pitch * radians(_param_hy_man_p_max.get())
+							+ radians(_param_hy_psp_off.get());
+				_att_sp.pitch_body = constrain(_att_sp.pitch_body, -radians(_param_hy_man_p_max.get()), radians(_param_hy_man_p_max.get()));
 
-			Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
-			q.copyTo(_att_sp.q_d);
+				_att_sp.yaw_body = yaw_body; // yaw is not controlled, so set setpoint to current yaw
+				_att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
 
-			_att_sp.reset_integral = false;
+				Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
+				q.copyTo(_att_sp.q_d);
 
-			_att_sp.timestamp = hrt_absolute_time();
+				_att_sp.reset_integral = false;
 
-			_attitude_sp_pub.publish(_att_sp);
+				_att_sp.timestamp = hrt_absolute_time();
+
+				_attitude_sp_pub.publish(_att_sp);
+			}
 		}
 	}
 }
@@ -232,13 +235,17 @@ void HydroAttitudeControl::Run()
 
 		vehicle_attitude_setpoint_poll();
 
-		if (_vehicle_status.nav_state == HYDRO_MODE_STABILIZED || _vehicle_status.nav_state == HYDRO_MODE_AUTO_DIVE ) {
+		_vehicle_control_mode_sub.update(&_vhycontrol_mode);
 
+		if(_vhycontrol_mode.flag_control_rates_enabled){
 			if (_att_sp.reset_integral) {
 				_rates_sp.reset_integral = true;
 			} else {
 				_rates_sp.reset_integral = false;
 			}
+		}
+
+		if (_vhycontrol_mode.flag_control_attitude_enabled) {
 
 			/* Run attitude controllers */
 
@@ -255,7 +262,7 @@ void HydroAttitudeControl::Run()
 									_yaw_ctrl.get_body_rate_setpoint());
 
 				/* add yaw rate setpoint from sticks */
-				if (_vehicle_status.nav_state == HYDRO_MODE_STABILIZED)
+				if (_vhycontrol_mode.flag_control_manual_enabled)
 				{
 					body_rates_setpoint(2) += math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
 										  -radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));

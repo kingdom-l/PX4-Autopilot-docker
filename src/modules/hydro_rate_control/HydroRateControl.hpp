@@ -104,6 +104,7 @@ private:
 	uORB::Subscription _battery_status_sub{ORB_ID(battery_status)};
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription _rates_sp_sub{ORB_ID(vehicle_rates_setpoint)};
+	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 	uORB::Subscription _vehicle_rates_sub{ORB_ID(vehicle_angular_velocity)};
 
@@ -116,6 +117,7 @@ private:
 	vehicle_torque_setpoint_s		_hydro_torque_setpoint{};
 	vehicle_rates_setpoint_s		_rates_sp{};
 	vehicle_status_s			_vehicle_status{};
+	vehicle_control_mode_s			_vhycontrol_mode{};
 
 	perf_counter_t _loop_perf;
 

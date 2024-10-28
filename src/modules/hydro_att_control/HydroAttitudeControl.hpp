@@ -100,6 +100,7 @@ private:
 	uORB::Subscription _att_sp_sub{ORB_ID(vehicle_attitude_setpoint)};			/**< vehicle attitude setpoint */
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};				/**< vehicle status subscription */
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};	/**< notification of manual control updates */
+	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};			/**< vehicle status subscription */
 
 	uORB::Publication<vehicle_rates_setpoint_s>	_rate_sp_pub{ORB_ID(vehicle_rates_setpoint)};
 	uORB::Publication<vehicle_attitude_setpoint_s>	_attitude_sp_pub{ORB_ID(vehicle_attitude_setpoint)}; // RC output
@@ -108,6 +109,7 @@ private:
 	vehicle_rates_setpoint_s		_rates_sp{};
 	vehicle_status_s			_vehicle_status{};
 	manual_control_setpoint_s		_manual_control_setpoint{};
+	vehicle_control_mode_s			_vhycontrol_mode{};
 
 	matrix::Dcmf _R{matrix::eye<float, 3>()};
 

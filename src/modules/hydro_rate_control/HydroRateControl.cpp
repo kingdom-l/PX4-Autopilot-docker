@@ -89,12 +89,13 @@ HydroRateControl::parameters_update()
 void
 HydroRateControl::vehicle_manual_poll()
 {
-	if (_vehicle_status.nav_state == HYDRO_MODE_ACRO || _vehicle_status.nav_state == HYDRO_MODE_MANUAL) {
+	if (_vhycontrol_mode.flag_control_manual_enabled) {
 
 		// Always copy the new manual setpoint, even if it wasn't updated, to fill the actuators with valid values
 		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
 
-			if (_vehicle_status.nav_state == HYDRO_MODE_ACRO) {
+			if (_vhycontrol_mode.flag_control_rates_enabled &&
+			    !_vhycontrol_mode.flag_control_attitude_enabled) {
 
 				_rates_sp.roll = _manual_control_setpoint.roll * radians(_param_hy_acro_x_max.get()); // _manual_control_setpoint.roll取值为[-1, 1]
 				_rates_sp.yaw = _manual_control_setpoint.yaw * radians(_param_hy_acro_z_max.get());
@@ -186,9 +187,11 @@ void HydroRateControl::Run()
 
 		_vehicle_status_sub.update(&_vehicle_status);
 
+		_vehicle_control_mode_sub.update(&_vhycontrol_mode);
+
 		vehicle_manual_poll();
 
-		if (_vehicle_status.nav_state == HYDRO_MODE_STABILIZED || _vehicle_status.nav_state == HYDRO_MODE_AUTO_DIVE || _vehicle_status.nav_state == HYDRO_MODE_ACRO) {
+		if (_vhycontrol_mode.flag_control_rates_enabled) {
 
 			const float airspeed = get_airspeed_and_update_scaling(); //15
 
@@ -237,7 +240,7 @@ void HydroRateControl::Run()
 			Vector3f control_u = angular_acceleration_setpoint * _airspeed_scaling * _airspeed_scaling + feedforward;
 
 			// Special case yaw in Acro: if the parameter HY_ACRO_YAW_CTL is not set then don't control yaw
-			if (_vehicle_status.nav_state == HYDRO_MODE_ACRO && !_param_hy_acro_yaw_en.get()) { // HY_ACRO_YAW_EN默认为0
+			if (!_vhycontrol_mode.flag_control_attitude_enabled && !_param_hy_acro_yaw_en.get()) { // HY_ACRO_YAW_EN默认为0
 				control_u(2) = _manual_control_setpoint.yaw * _param_hy_man_y_sc.get(); // HY_MAN_Y_SC: manual yaw scale
 				_rate_control.resetIntegral(2);
 			}
@@ -272,8 +275,9 @@ void HydroRateControl::Run()
 			_rate_control.resetIntegral();
 		}
 
-		if (_vehicle_status.nav_state == HYDRO_MODE_STABILIZED || _vehicle_status.nav_state == HYDRO_MODE_AUTO_DIVE ||
-			_vehicle_status.nav_state == HYDRO_MODE_ACRO || _vehicle_status.nav_state == HYDRO_MODE_MANUAL){
+		if (_vhycontrol_mode.flag_control_rates_enabled ||
+		    _vhycontrol_mode.flag_control_attitude_enabled ||
+		    _vhycontrol_mode.flag_control_manual_enabled){
 			// Add feed-forward from roll control output to yaw control output
 			// This can be used to counteract the adverse yaw effect when rolling the plane
 			_hydro_torque_setpoint.xyz[2] = math::constrain(_hydro_torque_setpoint.xyz[2] + _param_hy_rll_to_yaw_ff.get() *
