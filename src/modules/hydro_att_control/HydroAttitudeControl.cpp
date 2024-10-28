@@ -86,7 +86,7 @@ HydroAttitudeControl::parameters_update()
 void
 HydroAttitudeControl::auto_dive_poll(const float yaw_body)
 {
-	if (_vehicle_status.nav_state == HYDRO_MODE_AUTO_DIVE) {
+	if (_vehicle_status.nav_state == HYDRO_MODE_ALTCTL) {
 
 		_att_sp.roll_body = 0;
 		_att_sp.yaw_body = yaw_body;
@@ -131,7 +131,7 @@ HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
 		// Always copy the new manual setpoint, even if it wasn't updated, to fill the actuators with valid values
 		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
 
-			if (_vhycontrol_mode.flag_control_attitude_enabled) {
+			if (!_vhycontrol_mode.flag_control_climb_rate_enabled && _vhycontrol_mode.flag_control_attitude_enabled) {
 
 				_att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_man_r_max.get());
 
@@ -229,16 +229,16 @@ void HydroAttitudeControl::Run()
 			_auto_dive_start_time = hrt_absolute_time();
 		}
 
-		auto_dive_poll(euler_angles.psi());
+		// auto_dive_poll(euler_angles.psi());
 
 		vehicle_manual_poll(euler_angles.psi());
 
 		vehicle_attitude_setpoint_poll();
-		// printf("att: %f \n", (double)_att_sp.pitch_body);
+		printf("att_sp: %f \n", (double)_att_sp.pitch_body);
 
 		_vehicle_control_mode_sub.update(&_vhycontrol_mode);
-		printf("att_control_mode: %i %i %i \n", _vhycontrol_mode.flag_control_manual_enabled, _vhycontrol_mode.flag_control_attitude_enabled,
-						_vhycontrol_mode.flag_control_rates_enabled);
+		// printf("att_control_mode: %i %i %i \n", _vhycontrol_mode.flag_control_manual_enabled, _vhycontrol_mode.flag_control_attitude_enabled,
+		// 				_vhycontrol_mode.flag_control_rates_enabled);
 
 		if(_vhycontrol_mode.flag_control_rates_enabled){
 			if (_att_sp.reset_integral) {

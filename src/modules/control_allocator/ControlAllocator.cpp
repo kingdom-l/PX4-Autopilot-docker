@@ -313,7 +313,7 @@ ControlAllocator::update_allocate_hydro_state()
 	_manual_control_setpoint_sub.copy(&manual_control_setpoint);
 	_vehicle_status_sub.copy(&vehicle_status);
 
-	if(vehicle_status.nav_state == HYDRO_MODE_AUTO_DIVE)
+	if(vehicle_status.nav_state == HYDRO_MODE_ALTCTL)
 	{
 		new_state = AllocaterHydroState::WaterOnly;
 	}

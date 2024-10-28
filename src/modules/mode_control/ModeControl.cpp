@@ -227,7 +227,7 @@ void ModeControl::run()
 				_arming_check_reply_msg.mode_req_manual_control = true;//试一下这样能不能实现在出现遥控信号中断时自动处理
 				_arming_check_reply_msg.timestamp = hrt_absolute_time();
 
-				if(_registered_mode[i].mode_id == HYDRO_MODE_AUTO_DIVE)
+				if(_registered_mode[i].mode_id == HYDRO_MODE_ALTCTL)
 				{
 					_arming_check_reply_msg.mode_req_manual_control = false;//自动模式显然不需要检查遥控输入
 				}
