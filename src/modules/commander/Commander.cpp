@@ -2595,7 +2595,11 @@ void Commander::updateControlMode()
 
 	mode_util::getVehicleControlMode(_vehicle_status.nav_state,
 					 _vehicle_status.vehicle_type, _offboard_control_mode_sub.get(), _vehicle_control_mode);
+	// printf("hy_control_mode bef: %i %i %i \n", _vehicle_control_mode.flag_control_manual_enabled, _vehicle_control_mode.flag_control_attitude_enabled,
+	// 				       _vehicle_control_mode.flag_control_rates_enabled);
 	_mode_management.updateControlMode(_vehicle_status.nav_state, _vehicle_control_mode);
+	// printf("hy_control_mode: %i %i %i \n", _vehicle_control_mode.flag_control_manual_enabled, _vehicle_control_mode.flag_control_attitude_enabled,
+	// 					_vehicle_control_mode.flag_control_rates_enabled);
 
 	_vehicle_control_mode.flag_armed = isArmed();
 	_vehicle_control_mode.flag_multicopter_position_control_enabled =
@@ -2607,6 +2611,8 @@ void Commander::updateControlMode()
 		    || _vehicle_control_mode.flag_control_acceleration_enabled);
 	_vehicle_control_mode.timestamp = hrt_absolute_time();
 	_vehicle_control_mode_pub.publish(_vehicle_control_mode);
+	// printf("nav_state: %i \n", _vehicle_status.nav_state);
+
 }
 
 void Commander::printRejectMode(uint8_t nav_state)

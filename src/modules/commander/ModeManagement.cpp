@@ -503,9 +503,12 @@ int ModeManagement::modeExecutorInCharge() const
 bool ModeManagement::updateControlMode(uint8_t nav_state, vehicle_control_mode_s &control_mode) const
 {
 	bool ret = false;
+	// Modes::FIRST_EXTERNAL_NAV_STATE + 3:避免NAVIGATION_STATE_EXTERNAL1-NAVIGATION_STATE_EXTERNAL3
+	// 对应的_vehicle_control_mode被重置
+	if (nav_state >= Modes::FIRST_EXTERNAL_NAV_STATE + 3 && nav_state <= Modes::LAST_EXTERNAL_NAV_STATE) {
 
-	if (nav_state >= Modes::FIRST_EXTERNAL_NAV_STATE && nav_state <= Modes::LAST_EXTERNAL_NAV_STATE) {
 		if (_modes.valid(nav_state)) {
+
 			control_mode = _modes.mode(nav_state).config_control_setpoint;
 			ret = true;
 
