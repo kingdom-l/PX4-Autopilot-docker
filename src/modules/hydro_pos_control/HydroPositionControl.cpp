@@ -130,7 +130,7 @@ HydroPositionControl::Run()
 		att_sp.yaw_body = euler_angles.psi();
 		_attitude_sp_pub.publish(att_sp);
 
-		// printf("pos: %f %f %f\n", (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);
+		printf("pos: %f %f %f\n", (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);
 	}
 
 	perf_end(_loop_perf);
