@@ -107,7 +107,7 @@ HydroPositionControl::Run()
 		}
 
 		float depth_sp = _param_hy_depth_sp.get();
-		float depth = _local_pos.z; // 向下为正
+		float depth = -1; //_local_pos.z; // 向下为正
 
 		float depth_e = depth_sp - depth;
 		_depth_e_i = _depth_e_i + dt / 2 * (depth_e + _depth_e_pre);
@@ -115,7 +115,8 @@ HydroPositionControl::Run()
 
 		float pitch_sp_sat = math::constrain(_param_hy_high_p.get()*depth_e+_param_hy_high_i.get()*_depth_e_i, -radians(_param_hy_p_lim_max.get()), radians(_param_hy_p_lim_max.get()));
 
-		if(std::fabs(_param_hy_high_i.get()) <= 1e-6f){
+		if(std::fabs(_param_hy_high_i.get()) > 1e-6f){
+
 			float pitch_sp_unsat = _param_hy_high_p.get()*depth_e+_param_hy_high_i.get()*_depth_e_i;
 			_depth_e_i = _depth_e_i + dt/(radians(_param_hy_high_i.get())) * (pitch_sp_sat - pitch_sp_unsat);
 
@@ -128,6 +129,8 @@ HydroPositionControl::Run()
 		att_sp.pitch_body = pitch_sp_sat; // rad
 		att_sp.yaw_body = euler_angles.psi();
 		_attitude_sp_pub.publish(att_sp);
+
+		// printf("pos: %f %f %f\n", (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);
 	}
 
 	perf_end(_loop_perf);
