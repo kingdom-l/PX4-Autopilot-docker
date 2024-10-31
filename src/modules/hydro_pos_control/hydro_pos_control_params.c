@@ -94,7 +94,7 @@ PARAM_DEFINE_FLOAT(HY_P_LIM_MAX, 30.0f);
  *
  * Thedepth setpoint for an altitude controlled mode.
  *
- * @unit deg
+ * @unit m
  * @min 0.0
  * @max 3.0
  * @decimal 1

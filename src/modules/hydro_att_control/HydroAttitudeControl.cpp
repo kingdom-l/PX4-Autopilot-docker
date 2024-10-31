@@ -234,7 +234,7 @@ void HydroAttitudeControl::Run()
 		vehicle_manual_poll(euler_angles.psi());
 
 		vehicle_attitude_setpoint_poll();
-		printf("att_sp: %f \n", (double)_att_sp.pitch_body);
+		// printf("att_sp: %f \n", (double)_att_sp.pitch_body);
 
 		_vehicle_control_mode_sub.update(&_vhycontrol_mode);
 		// printf("att_control_mode: %i %i %i \n", _vhycontrol_mode.flag_control_manual_enabled, _vhycontrol_mode.flag_control_attitude_enabled,

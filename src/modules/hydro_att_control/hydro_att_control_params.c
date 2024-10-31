@@ -34,7 +34,7 @@
 /**
  * @file hydro_att_control_params.c
  *
- * Parameters defined by the fixed-wing attitude control task
+ * Parameters defined by the hydro attitude control task
  *
  * @author Lorenz Meier <lorenz@px4.io>
  * @author Thomas Gubler <thomas@px4.io>
