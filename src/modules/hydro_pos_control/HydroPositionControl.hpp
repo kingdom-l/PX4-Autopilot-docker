@@ -71,6 +71,7 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/normalized_unsigned_setpoint.h>
 #include <uORB/topics/position_controller_status.h>
+#include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/vehicle_attitude.h>
@@ -81,8 +82,9 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/debug_key_value.h>
 #include <uORB/uORB.h>
-
+#include <poll.h>
 
 using namespace time_literals;
 
@@ -112,6 +114,8 @@ private:
 
 	uORB::SubscriptionCallbackWorkItem _local_pos_sub{this, ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+	uORB::Subscription _debug_sub{ORB_ID(debug_key_value)};
 
 	uORB::Publication<vehicle_attitude_setpoint_s> _attitude_sp_pub;
 

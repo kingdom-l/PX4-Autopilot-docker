@@ -54,7 +54,7 @@ HydroPositionControl::HydroPositionControl() :
 	_attitude_sp_pub(ORB_ID(vehicle_attitude_setpoint)),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
 {
-	// parameters_update();
+
 }
 
 HydroPositionControl::~HydroPositionControl()
@@ -86,10 +86,19 @@ HydroPositionControl::Run()
 
 	if (_local_pos_sub.update(&_local_pos)) {
 
+		 if (_parameter_update_sub.updated()) {
+			parameter_update_s param_update;
+			_parameter_update_sub.copy(&param_update);
+
+			// 如果有任何参数更新, 调用 updateParams() 来检查
+			// 该类属性是否需要更新 (然后执行更新)。
+			updateParams();
+		}
+
 		float dt = 0.f;
 
-		static constexpr float DT_MIN = 0.002f;
-		static constexpr float DT_MAX = 0.04f;
+		static constexpr float DT_MIN = 0.01f;
+		static constexpr float DT_MAX = 0.05f;
 
 		vehicle_attitude_s att{};
 
@@ -106,8 +115,13 @@ HydroPositionControl::Run()
 			_last_run = time_now_us;
 		}
 
-		float depth_sp = _param_hy_depth_sp.get();
-		float depth = -1; //_local_pos.z; // 向下为正
+		struct debug_key_value_s debug_value;
+		_debug_sub.copy(&debug_value);
+		// PX4_INFO("velx: %f", (double)debug_value.value);
+
+
+		float depth_sp = -_param_hy_depth_sp.get();
+		float depth = -debug_value.value; //_local_pos.z; // 向下为正
 
 		float depth_e = depth_sp - depth;
 		_depth_e_i = _depth_e_i + dt / 2 * (depth_e + _depth_e_pre);
@@ -130,7 +144,7 @@ HydroPositionControl::Run()
 		att_sp.yaw_body = euler_angles.psi();
 		_attitude_sp_pub.publish(att_sp);
 
-		printf("pos: %f %f %f\n", (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);
+		printf("pos: %f %f %f %f %f\n", (double)depth_sp, (double)depth, (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);
 	}
 
 	perf_end(_loop_perf);
