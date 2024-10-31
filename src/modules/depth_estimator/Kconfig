@@ -1,0 +1,5 @@
+menuconfig MODULES_DEPTH_ESTIMATOR
+	bool "depth_estimator"
+	default n
+	---help---
+		Enable support for depth_estimator

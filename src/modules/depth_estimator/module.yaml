@@ -1,0 +1,62 @@
+module_name: depth_estimator
+parameters:
+- group: DepthEstimator
+  definitions:
+    #PR:pressure LV:level
+
+    #数据源开关
+    HY_DE_PR_CTRL:
+      description:
+        short: Whether to use water pressure gauge data
+      type: boolean
+      default: 1
+
+    HY_DE_LV_CTRL:
+      description:
+        short: Whether to use water level gauge data
+      type: boolean
+      default: 0
+
+    #根据水压计算深度的参数
+    HY_DE_PR_P0:
+      description:
+        short: Air pressure at the surface of the water, in pascals
+      type: float
+      min: 10000
+      default: 100000
+
+    HY_DE_PR_RHO:
+      description:
+        short: Water density
+      type: float
+      unit: kg/m^3
+      min: 0.1
+      default: 1000
+
+    HY_DE_PR_G:
+      description:
+        short: Gravitational acceleration
+      type: float
+      unit: m/s^2
+      min: 0.1
+      default: 9.8
+
+    #深度计采集数据的卡尔曼增益
+    HY_DE_PR_K:
+      description:
+        short: Kalman gain for data collection of water pressure gauge
+      type: float
+      default: 0
+      min: 0
+      max: 1
+
+    #深度计数据与中值滤波结果之间的最大差值，超过的数据无效
+    HY_DE_PR_MAXD:
+      description:
+        short: The maximum difference between the depth data from pressure gauge and the median filtering result
+      type: float
+      unit: m
+      default: 0.5
+      min: 0.01
+
+

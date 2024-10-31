@@ -115,13 +115,16 @@ HydroPositionControl::Run()
 			_last_run = time_now_us;
 		}
 
-		struct debug_key_value_s debug_value;
-		_debug_sub.copy(&debug_value);
-		// PX4_INFO("velx: %f", (double)debug_value.value);
+		// 订阅动捕测量的深度信息
+		// struct debug_key_value_s debug_value;
+		// _debug_sub.copy(&debug_value);
+		// float depth = -debug_value.value; //_local_pos.z; // 向下为正
 
+		// 订阅深度计的深度信息
+		_depth_estimated_sub.update(&_depth_estimated);
+		float depth = _depth_estimated.depth_estimated;
 
 		float depth_sp = -_param_hy_depth_sp.get();
-		float depth = -debug_value.value; //_local_pos.z; // 向下为正
 
 		float depth_e = depth_sp - depth;
 		_depth_e_i = _depth_e_i + dt / 2 * (depth_e + _depth_e_pre);

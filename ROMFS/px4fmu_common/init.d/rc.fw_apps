@@ -34,6 +34,11 @@ land_detector start fixedwing
 mode_control start
 
 #
+# Start Depth Estimator.
+#
+depth_estimator start
+
+#
 # Start attitude controller for hydro.
 #
 hydro_att_control start

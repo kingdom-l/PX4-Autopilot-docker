@@ -83,6 +83,7 @@
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/debug_key_value.h>
+#include <uORB/topics/depth_estimated.h>
 #include <uORB/uORB.h>
 #include <poll.h>
 
@@ -116,10 +117,12 @@ private:
 	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _debug_sub{ORB_ID(debug_key_value)};
+	uORB::Subscription _depth_estimated_sub{ORB_ID(depth_estimated)}; // depth gauge
 
 	uORB::Publication<vehicle_attitude_setpoint_s> _attitude_sp_pub;
 
 	vehicle_local_position_s _local_pos{};
+	depth_estimated_s _depth_estimated{};
 
 	perf_counter_t _loop_perf; // loop performance counter
 	hrt_abstime _last_run{0};
