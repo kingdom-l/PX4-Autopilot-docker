@@ -95,7 +95,7 @@ PARAM_DEFINE_FLOAT(HY_P_RMAX_POS, 120.0f);
 PARAM_DEFINE_FLOAT(HY_P_RMAX_NEG, 120.0f);
 
 /**
- * Maximum roll rate setpoint
+ * Maximum roll rate setpoint for roll control output
  *
  * @unit deg/s
  * @min 0.0
@@ -107,7 +107,7 @@ PARAM_DEFINE_FLOAT(HY_P_RMAX_NEG, 120.0f);
 PARAM_DEFINE_FLOAT(HY_R_RMAX, 70.0f);
 
 /**
- * Maximum yaw rate setpoint
+ * Maximum yaw rate setpoint for yaw control output
  *
  * @unit deg/s
  * @min 0.0
@@ -119,7 +119,7 @@ PARAM_DEFINE_FLOAT(HY_R_RMAX, 70.0f);
 PARAM_DEFINE_FLOAT(HY_Y_RMAX, 50.0f);
 
 /**
- * Maximum Airspeed (CAS)
+ * Maximum Airspeed (CAS) for the trim airspeed
  *
  * The maximal airspeed (calibrated airspeed) the user is able to command.
  *
@@ -132,7 +132,7 @@ PARAM_DEFINE_FLOAT(HY_Y_RMAX, 50.0f);
 PARAM_DEFINE_FLOAT(HY_AIRSPD_MAX, 20.0f);
 
 /**
- * Stall Airspeed (CAS)
+ * Stall Airspeed (CAS) for the trim airspeed
  *
  * The stall airspeed (calibrated airspeed) of the vehicle.
  * It is used for airspeed sensor failure detection and for the control
@@ -178,7 +178,7 @@ PARAM_DEFINE_FLOAT(HY_AIRSPD_TRIM, 15.0f);
 PARAM_DEFINE_FLOAT(HY_PSP_OFF, 0.0f);
 
 /**
- * Maximum manual pitch angle
+ * Maximum manual pitch angle for hydro_mode_stab
  *
  * Applies to both directions in all manual modes with attitude stabilization but without altitude control
  *
@@ -192,7 +192,7 @@ PARAM_DEFINE_FLOAT(HY_PSP_OFF, 0.0f);
 PARAM_DEFINE_FLOAT(HY_MAN_P_MAX, 30.0f);
 
 /**
- * Maximum manual roll angle
+ * Maximum manual roll angle for hydro_mode_stab
  *
  * Applies to both directions in all manual modes with attitude stabilization
  *

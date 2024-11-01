@@ -224,7 +224,7 @@ PARAM_DEFINE_FLOAT(HY_PR_FF, 0.5f);
 PARAM_DEFINE_FLOAT(HY_YR_FF, 0.3f);
 
 /**
- * Acro body roll max rate setpoint
+ * Acro body roll max rate setpoint for manual control setpoint
  *
  * @min 10
  * @max 720
@@ -234,7 +234,7 @@ PARAM_DEFINE_FLOAT(HY_YR_FF, 0.3f);
 PARAM_DEFINE_FLOAT(HY_ACRO_X_MAX, 90);
 
 /**
- * Acro body pitch max rate setpoint
+ * Acro body pitch max rate setpoint for manual control setpoint
  *
  * @min 10
  * @max 720
@@ -244,7 +244,7 @@ PARAM_DEFINE_FLOAT(HY_ACRO_X_MAX, 90);
 PARAM_DEFINE_FLOAT(HY_ACRO_Y_MAX, 90);
 
 /**
- * Acro body yaw max rate setpoint
+ * Acro body yaw max rate setpoint for manual control setpoint
  *
  * @min 10
  * @max 720

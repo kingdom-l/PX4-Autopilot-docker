@@ -141,6 +141,7 @@ HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
 
 				_att_sp.yaw_body = yaw_body; // yaw is not controlled, so set setpoint to current yaw
 				_att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
+				// printf("manual: %f ", (double)_att_sp.roll_body);
 
 				Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
 				q.copyTo(_att_sp.q_d);
