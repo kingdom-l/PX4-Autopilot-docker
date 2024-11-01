@@ -104,7 +104,7 @@ HydroRateControl::vehicle_manual_poll()
 				_rates_sp.pitch = -_manual_control_setpoint.pitch * radians(_param_hy_acro_y_max.get()); // hy_acro_y_max: Acro body pitch max rate setpoint 90
 				_rates_sp.timestamp = hrt_absolute_time();
 				_rates_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
-				// printf("here5: %f ", (double)_rates_sp.pitch);
+				printf("here5: %f ", (double)_rates_sp.pitch);
 
 				_rate_sp_pub.publish(_rates_sp);
 
@@ -119,7 +119,7 @@ HydroRateControl::vehicle_manual_poll()
 
 				_hydro_thrust_setpoint.xyz[0] = math::constrain((_manual_control_setpoint.throttle + 1.f) * .5f, 0.f, 1.f);
 
-				// printf("here6 : %f %f ", (double)_manual_control_setpoint.pitch, (double)_hydro_torque_setpoint.xyz[1]);
+				printf("here6 : %f %f ", (double)_hydro_torque_setpoint.xyz[0], (double)_hydro_torque_setpoint.xyz[1]);
 			}
 		}
 	}
@@ -238,6 +238,7 @@ void HydroRateControl::Run()
 			}
 
 			_rates_sp_sub.update(&_rates_sp);
+			printf("_rates_sp: %f ", (double)_rates_sp.pitch);
 
 			Vector3f body_rates_setpoint = Vector3f(_rates_sp.roll, _rates_sp.pitch, _rates_sp.yaw);
 
@@ -256,14 +257,14 @@ void HydroRateControl::Run()
 			if (!_vhycontrol_mode.flag_control_attitude_enabled && !_param_hy_acro_yaw_en.get()) { // HY_ACRO_YAW_EN默认为0
 				control_u(2) = _manual_control_setpoint.yaw * _param_hy_man_y_sc.get(); // HY_MAN_Y_SC: manual yaw scale:1
 				_rate_control.resetIntegral(2);
-				// printf("here9 ");
+				printf("here9 ");
 			}
 
 			// PX4_INFO("control_u: %f, %f, %f", (double)control_u(0), (double)control_u(1), (double)control_u(2));
 			if (control_u.isAllFinite()) {
 				matrix::constrain(control_u + trim, -1.f, 1.f).copyTo(_hydro_torque_setpoint.xyz);
-				// printf("here10 : %f %f %f", (double)control_u(0), (double)control_u(1), (double)control_u(2));
-
+				printf("here10 : %f %f %f ", (double)control_u(0), (double)control_u(1), (double)control_u(2));
+				printf("hy_torque: %f %f \n", (double)_hydro_torque_setpoint.xyz[0], (double)_hydro_torque_setpoint.xyz[1]);
 			} else {
 				_rate_control.resetIntegral();
 				trim.copyTo(_hydro_torque_setpoint.xyz);
