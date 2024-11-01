@@ -87,7 +87,22 @@ PARAM_DEFINE_FLOAT(HY_HIGH_D, 0.0f);
  * @increment 0.5
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_P_LIM_MAX, 30.0f);
+PARAM_DEFINE_FLOAT(HY_P_LIM, 30.0f);
+
+/**
+ * Maximum roll angle
+ *
+ * The maximum roll angle setpoint for setpoint for a height-rate or altitude controlled mode.
+ *
+ * @unit deg
+ * @min 0.0
+ * @max 60.0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_R_LIM, 30.0f);
+
 
 /**
  * Hydro depth setpoint

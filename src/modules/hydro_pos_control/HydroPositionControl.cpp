@@ -116,13 +116,13 @@ HydroPositionControl::Run()
 		}
 
 		// 订阅动捕测量的深度信息
-		// struct debug_key_value_s debug_value;
-		// _debug_sub.copy(&debug_value);
-		// float depth = -debug_value.value; //_local_pos.z; // 向下为正
+		struct debug_key_value_s debug_value;
+		_debug_sub.copy(&debug_value);
+		float depth = -debug_value.value; //_local_pos.z; // 向下为正
 
 		// 订阅深度计的深度信息
-		_depth_estimated_sub.update(&_depth_estimated);
-		float depth = _depth_estimated.depth_estimated;
+		// _depth_estimated_sub.update(&_depth_estimated);
+		// float depth = _depth_estimated.depth_estimated;
 
 		float depth_sp = -_param_hy_depth_sp.get();
 
@@ -130,7 +130,7 @@ HydroPositionControl::Run()
 		_depth_e_i = _depth_e_i + dt / 2 * (depth_e + _depth_e_pre);
 		_depth_e_pre = depth_e;
 
-		float pitch_sp_sat = math::constrain(_param_hy_high_p.get()*depth_e+_param_hy_high_i.get()*_depth_e_i, -radians(_param_hy_p_lim_max.get()), radians(_param_hy_p_lim_max.get()));
+		float pitch_sp_sat = math::constrain(_param_hy_high_p.get()*depth_e+_param_hy_high_i.get()*_depth_e_i, -radians(_param_hy_p_lim.get()), radians(_param_hy_p_lim.get()));
 
 		if(std::fabs(_param_hy_high_i.get()) > 1e-6f){
 
@@ -139,10 +139,11 @@ HydroPositionControl::Run()
 
 		}
 
+		_manual_control_setpoint_sub.update(&_manual_control_setpoint);
 		const matrix::Eulerf euler_angles(_R);
 		vehicle_attitude_setpoint_s att_sp{};
 		att_sp.timestamp = hrt_absolute_time();
-		att_sp.roll_body = 0.f;
+		att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_r_lim.get());
 		att_sp.pitch_body = pitch_sp_sat; // rad
 		att_sp.yaw_body = euler_angles.psi();
 		_attitude_sp_pub.publish(att_sp);

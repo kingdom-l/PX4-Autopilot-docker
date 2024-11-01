@@ -118,11 +118,13 @@ private:
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _debug_sub{ORB_ID(debug_key_value)};
 	uORB::Subscription _depth_estimated_sub{ORB_ID(depth_estimated)}; // depth gauge
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 
 	uORB::Publication<vehicle_attitude_setpoint_s> _attitude_sp_pub;
 
 	vehicle_local_position_s _local_pos{};
 	depth_estimated_s _depth_estimated{};
+	manual_control_setpoint_s _manual_control_setpoint{};
 
 	perf_counter_t _loop_perf; // loop performance counter
 	hrt_abstime _last_run{0};
@@ -148,7 +150,8 @@ private:
 		(ParamFloat<px4::params::HY_HIGH_P>) _param_hy_high_p,
 		(ParamFloat<px4::params::HY_HIGH_I>) _param_hy_high_i,
 		(ParamFloat<px4::params::HY_HIGH_D>) _param_hy_high_d,
-		(ParamFloat<px4::params::HY_P_LIM_MAX>) _param_hy_p_lim_max,
+		(ParamFloat<px4::params::HY_P_LIM>) _param_hy_p_lim,
+		(ParamFloat<px4::params::HY_R_LIM>) _param_hy_r_lim,
 		(ParamFloat<px4::params::HY_DEPTH_SP>) _param_hy_depth_sp
 
 	)
