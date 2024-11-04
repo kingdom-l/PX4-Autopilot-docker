@@ -53,6 +53,8 @@
 
 using namespace matrix;
 
+using namespace time_literals;
+
 class HydroControlAllocator : public ModuleBase<HydroControlAllocator>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
@@ -80,6 +82,7 @@ public:
 private:
 	uORB::SubscriptionCallbackWorkItem 	_hydro_torque_setpoint_sub{this, ORB_ID(hydro_torque_setpoint)};
 	uORB::SubscriptionCallbackWorkItem 	_hydro_thrust_setpoint_sub{this, ORB_ID(hydro_thrust_setpoint)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
@@ -115,18 +118,30 @@ private:
 		float Fz;
 		bool with_thrust;
 	};
+
+	struct LowPassFilter{
+		float T;
+		float fc;
+		float alpha;
+		float out;
+	};
+
 	float _Va2;
 	float _rho = 1e3;
 	float _alpha;
 	NfParams _nf_params_hy_wr;
 	NfParams _nf_params_hy_wl;
 	NfParams _nf_params_hy_htail;
+	LowPassFilter _lpf_hy_wr;
+	LowPassFilter _lpf_hy_wl;
 
 	void optim(float x_opt[2], NfParams p);
 	SquareMatrix<float, 2> J_func(Vector2f x, NfParams p);
 	Vector2f func(Vector2f x, NfParams p);
+	void LPFilter(float in, LowPassFilter* lpf_params);
 
 	void parameters_update();
+	void lpf_param_update();
 
 	perf_counter_t	_loop_perf;			/**< loop duration performance counter */
 
@@ -154,7 +169,13 @@ private:
 		(ParamInt<px4::params::HY_LMOTOR_IDX>) _param_hy_lmotor_idx,
 		(ParamInt<px4::params::HY_R_SV_IDX>) _param_hy_r_sv_idx,
 		(ParamInt<px4::params::HY_L_SV_IDX>) _param_hy_l_sv_idx,
-		(ParamInt<px4::params::HY_HTAIL_SV_IDX>) _param_hy_htail_sv_idx
+		(ParamInt<px4::params::HY_HTAIL_SV_IDX>) _param_hy_htail_sv_idx,
+		(ParamFloat<px4::params::HY_ST_INFO_X2>) _param_hy_st_info_x2,
+		(ParamFloat<px4::params::HY_ST_INFO_Y2>) _param_hy_st_info_y2,
+		(ParamFloat<px4::params::HY_ST_INFO_Z2>) _param_hy_st_info_z2,
+		(ParamFloat<px4::params::HY_ST_INFO_YT>) _param_hy_st_info_yT,
+		(ParamFloat<px4::params::HY_ST_INFO_YH>) _param_hy_st_info_yh,
+		(ParamFloat<px4::params::HY_ST_INFO_XE>) _param_hy_st_info_xe
 
 	)
 

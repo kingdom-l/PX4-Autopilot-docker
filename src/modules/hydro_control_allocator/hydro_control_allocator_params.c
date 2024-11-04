@@ -50,7 +50,7 @@
  * @increment 0.5
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 2.0);
+PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 4.0);
 
 /**
  * Hydro Angle of Attack Trim
@@ -87,7 +87,7 @@ PARAM_DEFINE_INT32(HY_SPEED_SELECT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_THRUST_MAX, 2);
+PARAM_DEFINE_FLOAT(HY_THRUST_MAX, 10);
 
 /**
  * Maximum thrust Gain of a single underwater thruster
@@ -300,4 +300,81 @@ PARAM_DEFINE_INT32(HY_R_SV_IDX, 4);
  */
 PARAM_DEFINE_INT32(HY_L_SV_IDX, 5);
 
+/**
+ * Structure info
+ *
+ *
+ * @unit m
+ * @min 0.
+ * @max 1.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_ST_INFO_X2, 0.03);
+
+/**
+ * Structure info
+ *
+ *
+ * @unit m
+ * @min 0.
+ * @max 1.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_ST_INFO_Y2, 0.);
+
+/**
+ * Structure info
+ *
+ *
+ * @unit m
+ * @min 0.
+ * @max 1.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_ST_INFO_Z2, 0.1);
+
+/**
+ * Structure info
+ *
+ *
+ * @unit m
+ * @min 0.
+ * @max 1.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_ST_INFO_YT, 0.3);
+
+/**
+ * Structure info
+ *
+ *
+ * @unit m
+ * @min 0.
+ * @max 1.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_ST_INFO_YH, 0.1);
+
+/**
+ * Structure info
+ *
+ *
+ * @unit m
+ * @min 0.
+ * @max 1.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_ST_INFO_XE, 0.3);
 
