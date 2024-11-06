@@ -96,10 +96,10 @@ HydroControlAllocator::parameters_update()
 	_st_info.xe = _param_hy_st_info_xe.get();
 
 	_hy_effectiveness(0,0) = 0.8; _hy_effectiveness(0,1) = 0; _hy_effectiveness(0,2) = 0.8;
-	_hy_effectiveness(0,3) = 0; _hy_effectiveness(0,4) = 1; _hy_effectiveness(0,5) = 0;
+	_hy_effectiveness(0,3) = 0;   _hy_effectiveness(0,4) = 1; _hy_effectiveness(0,5) = 0;
 
-	_hy_effectiveness(1,0) = 0;  _hy_effectiveness(1,1) = 0.2; _hy_effectiveness(1,2) = 0;
-	_hy_effectiveness(1,3) = 0.2; _hy_effectiveness(1,4) = 0;  _hy_effectiveness(1,5) = 1;
+	_hy_effectiveness(1,0) = 0;   _hy_effectiveness(1,1) = 0.2; _hy_effectiveness(1,2) = 0;
+	_hy_effectiveness(1,3) = 0.2; _hy_effectiveness(1,4) = 0;   _hy_effectiveness(1,5) = 1;
 
 	_hy_effectiveness(2,0) = 0;                          _hy_effectiveness(2,1) = (_st_info.y2+_st_info.yT); _hy_effectiveness(2,2) = 0;
 	_hy_effectiveness(2,3) = (_st_info.y2-_st_info.yT);  _hy_effectiveness(2,4) = 0;                         _hy_effectiveness(2,5) = 0;
@@ -107,8 +107,12 @@ HydroControlAllocator::parameters_update()
 	_hy_effectiveness(3,0) = _st_info.z2;  _hy_effectiveness(3,1) = -_st_info.x2; _hy_effectiveness(3,2) = _st_info.z2;
 	_hy_effectiveness(3,3) = -_st_info.x2; _hy_effectiveness(3,4) = 0;            _hy_effectiveness(3,5) = _st_info.xe;
 
-	_hy_effectiveness(4,0) = -(_st_info.y2+_st_info.yT); _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = -(_st_info.y2-_st_info.yT);
-	_hy_effectiveness(4,3) = 0;                          _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
+	// _hy_effectiveness(4,0) = -(_st_info.y2+_st_info.yT); _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = -(_st_info.y2-_st_info.yT);
+	// _hy_effectiveness(4,3) = 0;                          _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
+
+	// 暂时不考虑yaw力矩
+	_hy_effectiveness(4,0) = 0; _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = 0;
+	_hy_effectiveness(4,3) = 0; _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
 
 
 	// _hy_effectiveness = hy_effectiveness;
@@ -246,7 +250,7 @@ void HydroControlAllocator::Run()
 	if (_hydro_torque_setpoint_sub.update(&hydro_torque_setpoint)) {
 		_wrench_sp(2) = hydro_torque_setpoint.xyz[0]; // 无量纲[-1, 1]
 		_wrench_sp(3) = hydro_torque_setpoint.xyz[1];
-		_wrench_sp(4) = hydro_torque_setpoint.xyz[2] * 0.f; // yaw轴扭矩暂时置零
+		_wrench_sp(4) = hydro_torque_setpoint.xyz[2]; // yaw轴扭矩暂时置零
 		// printf("_torque_sp: %f %f %f ", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 		do_update = true;
 		_timestamp_sample = hydro_torque_setpoint.timestamp_sample;
