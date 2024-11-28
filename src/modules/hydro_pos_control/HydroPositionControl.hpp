@@ -87,6 +87,10 @@
 #include <uORB/uORB.h>
 #include <poll.h>
 
+#include <lib/two_order_eso/two_order_eso.hpp>
+#include <lib/three_order_eso/three_order_eso.hpp>
+#include <lib/tracking_differentiator/tracking_differentiator.hpp>
+
 using namespace time_literals;
 
 using matrix::Vector2d;
@@ -110,6 +114,7 @@ public:
 
 	bool init();
 
+
 private:
 	void Run() override;
 
@@ -129,6 +134,10 @@ private:
 	perf_counter_t _loop_perf; // loop performance counter
 	hrt_abstime _last_run{0};
 	matrix::Dcmf _R{matrix::eye<float, 3>()};
+
+	TwoOrderEso _depth_eso{100, 300};
+	ThreeOrderEso _depth_eso1{100, 300, 1000};
+	TrackingDifferentiator _depth_td{0, 0};
 
 	float _water_density = 1000;
 	float _depth_e_pre = 0.f;
