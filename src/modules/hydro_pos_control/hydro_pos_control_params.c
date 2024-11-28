@@ -103,11 +103,38 @@ PARAM_DEFINE_FLOAT(HY_P_LIM, 30.0f);
  */
 PARAM_DEFINE_FLOAT(HY_R_LIM, 30.0f);
 
+/**
+ * Hydro depth saturate max value
+ *
+ * The depth saturate max value for saturate_function.
+ *
+ * @unit
+ * @min 0.0
+ * @max 15.0
+ * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEPSAT_MAX, 5.f);
+
+/**
+ * Hydro depth saturate slope
+ *
+ * Th edepth saturate slope for saturate_function.
+ *
+ * @unit
+ * @min 0.0
+ * @max 3.0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEPSAT_K, 1.f);
 
 /**
  * Hydro depth setpoint
  *
- * Thedepth setpoint for an altitude controlled mode.
+ * The depth setpoint for an altitude controlled mode.
  *
  * @unit m
  * @min 0.0
