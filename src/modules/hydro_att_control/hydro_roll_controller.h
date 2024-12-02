@@ -39,6 +39,8 @@
 #ifndef HYDRO_ROLL_CONTROLLER_H
 #define HYDRO_ROLL_CONTROLLER_H
 
+#include <lib/mathlib/math/filter/LowPassFilter2p.hpp>
+
 class RollController
 {
 public:
@@ -67,6 +69,8 @@ private:
 	float _max_rate;
 	float _euler_rate_setpoint;
 	float _body_rate_setpoint;
+
+	math::LowPassFilter2p<float> _euler_roll_lpf{800.f, 40.f};
 };
 
 #endif // HYDRO_ROLL_CONTROLLER_H

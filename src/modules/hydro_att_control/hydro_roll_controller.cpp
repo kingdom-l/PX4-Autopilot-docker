@@ -55,6 +55,8 @@ float RollController::control_roll(float roll_setpoint, float euler_yaw_rate_set
 	const float roll_error = roll_setpoint - roll;
 	_euler_rate_setpoint = roll_error / _tc;
 
+	// _euler_rate_setpoint = _euler_roll_lpf.apply(_euler_rate_setpoint);
+
 	/* Transform setpoint to body angular rates (jacobian) */
 	const float roll_body_rate_setpoint_raw = _euler_rate_setpoint - sinf(pitch) *
 			euler_yaw_rate_setpoint;
