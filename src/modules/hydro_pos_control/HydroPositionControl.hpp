@@ -83,6 +83,7 @@
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/debug_key_value.h>
+#include <uORB/topics/debug_vect.h>
 #include <uORB/topics/depth_estimated.h>
 #include <uORB/uORB.h>
 #include <poll.h>
@@ -90,6 +91,7 @@
 #include <lib/two_order_eso/two_order_eso.hpp>
 #include <lib/three_order_eso/three_order_eso.hpp>
 #include <lib/tracking_differentiator/tracking_differentiator.hpp>
+// #include <lib/Eigen/Eigen.h>
 
 using namespace time_literals;
 
@@ -121,7 +123,8 @@ private:
 	uORB::SubscriptionCallbackWorkItem _local_pos_sub{this, ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
-	uORB::Subscription _debug_sub{ORB_ID(debug_key_value)};
+	uORB::Subscription _debug_sub{ORB_ID(debug_vect)}; // 订阅动捕位置
+	// uORB::Subscription _debug_sub{ORB_ID(debug_key_value)}; // 订阅动捕高度
 	uORB::Subscription _depth_estimated_sub{ORB_ID(depth_estimated)}; // depth gauge
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 
@@ -137,7 +140,8 @@ private:
 
 	TwoOrderEso _depth_eso{100, 300};
 	ThreeOrderEso _depth_eso1{100, 300, 1000};
-	TrackingDifferentiator _depth_td{0, 0};
+	TrackingDifferentiator _depth_td{100, 0.07};
+	// Eigen::MatrixXf _mat(3, 3);
 
 	float _water_density = 1000;
 	float _depth_e_pre = 0.f;

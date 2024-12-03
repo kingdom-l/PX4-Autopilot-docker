@@ -122,13 +122,16 @@ HydroPositionControl::Run()
 		}
 
 		// 订阅动捕测量的深度信息
-		struct debug_key_value_s debug_value;
+		// struct debug_key_value_s debug_value;
+		struct debug_vect_s debug_value; // 订阅动捕测量的位置信息
 		_debug_sub.copy(&debug_value);
-		float depth = -debug_value.value; //_local_pos.z; // 向下为正
+		// float depth = -debug_value.value; //_local_pos.z; // 向下为正
+		float depth = -debug_value.z;
 
 		// 订阅深度计的深度信息
 		// _depth_estimated_sub.update(&_depth_estimated);
 		// float depth = _depth_estimated.depth_estimated;
+		// printf("depth_estimated: %f \n", (double)depth);
 
 		float depth_sp = -_param_hy_depth_sp.get();
 
@@ -153,7 +156,7 @@ HydroPositionControl::Run()
 		att_sp.pitch_body = -pitch_sp_sat; // rad
 		att_sp.yaw_body = euler_angles.psi();
 		att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f; // 最大油门量为0.7
-		att_sp.thrust_body[2] = saturate_function(depth_e, _param_hy_depsat_max.get(), _param_hy_depsat_k.get());
+		// att_sp.thrust_body[2] = saturate_function(depth_e, _param_hy_depsat_max.get(), _param_hy_depsat_k.get());
 		_attitude_sp_pub.publish(att_sp);
 
 		// printf("pos: %f %f %f %f %f\n", (double)depth_sp, (double)depth, (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);

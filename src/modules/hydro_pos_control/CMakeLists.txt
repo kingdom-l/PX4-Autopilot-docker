@@ -41,4 +41,5 @@ px4_add_module(
 		two_order_eso
 		three_order_eso
 		tracking_differentiator
+		#Eigen
 	)
