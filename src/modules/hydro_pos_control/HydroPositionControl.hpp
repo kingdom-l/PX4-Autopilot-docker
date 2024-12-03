@@ -83,6 +83,7 @@
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/debug_key_value.h>
+#include <uORB/topics/debug_value.h>
 #include <uORB/topics/debug_vect.h>
 #include <uORB/topics/depth_estimated.h>
 #include <uORB/uORB.h>
@@ -91,6 +92,7 @@
 #include <lib/two_order_eso/two_order_eso.hpp>
 #include <lib/three_order_eso/three_order_eso.hpp>
 #include <lib/tracking_differentiator/tracking_differentiator.hpp>
+#include <lib/mathlib/math/filter/LowPassFilter2p.hpp>
 // #include <lib/Eigen/Eigen.h>
 
 using namespace time_literals;
@@ -129,6 +131,8 @@ private:
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 
 	uORB::Publication<vehicle_attitude_setpoint_s> _attitude_sp_pub;
+	struct debug_value_s _dbg_val;
+	orb_advert_t pub_dbg_val;
 
 	vehicle_local_position_s _local_pos{};
 	depth_estimated_s _depth_estimated{};
@@ -140,7 +144,9 @@ private:
 
 	TwoOrderEso _depth_eso{100, 300};
 	ThreeOrderEso _depth_eso1{100, 300, 1000};
-	TrackingDifferentiator _depth_td{100, 0.07};
+	TrackingDifferentiator _pos_x_td{100, 0.07};
+	math::LowPassFilter2p<float> _pos_x_lpf{800.f, 40.f};
+	float _vx_hat;
 	// Eigen::MatrixXf _mat(3, 3);
 
 	float _water_density = 1000;
