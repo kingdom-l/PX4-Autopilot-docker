@@ -55,6 +55,7 @@ HydroPositionControl::HydroPositionControl() :
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
 {
 	_dbg_val.value = 0.0f;
+	_dbg_val.ind = 0;
 	pub_dbg_val = orb_advertise(ORB_ID(debug_value), &_dbg_val);
 }
 
@@ -124,20 +125,22 @@ HydroPositionControl::Run()
 
 		// 订阅动捕测量的深度信息
 		// struct debug_key_value_s debug_value;
-		struct debug_vect_s debug_value; // 订阅动捕测量的位置信息
-		_debug_sub.copy(&debug_value);
+		struct debug_vect_s debug_val; // 订阅动捕测量的位置信息
+		_debug_vect_sub.copy(&debug_val);
 		// float depth = -debug_value.value; //_local_pos.z; // 向下为正
-		float depth = -debug_value.z;
+		float depth = -debug_val.z;
 
 		// 对位置进行低通滤波
-		// _dbg_key.timestamp = hrt_absolute_time();
-		// _dbg_val.value = _pos_x_lpf.apply(debug_value.x);
+		// _dbg_key.timestamp = hrt_absolute_time(); // or
+		// _dbg_val.timestamp = hrt_absolute_time();
+		// _dbg_val.value = _pos_x_lpf.apply(debug_val.x);
 		// orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
 
 		// 使用TD估计速度，并发布debug_value消息，在mavlink inspector显示
-		_pos_x_td.update(debug_value.x);
+		_pos_x_td.update(debug_val.x);
 		_vx_hat = _pos_x_td.getDerivative();
 		_dbg_val.value = _vx_hat;
+		_dbg_val.timestamp = hrt_absolute_time();
 		orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
 
 		// 订阅深度计的深度信息

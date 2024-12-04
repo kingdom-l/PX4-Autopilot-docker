@@ -267,7 +267,7 @@ void HydroControlAllocator::Run()
 			_timestamp_sample = hydro_thrust_setpoint.timestamp_sample;
 		}
 	}
-	printf("_wrench_sp: %f %f %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
+	// printf("_wrench_sp: %f %f %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 
 	if(do_update){
 		_last_run = now;
@@ -309,8 +309,8 @@ void HydroControlAllocator::Run()
 		_nf_params_hy_htail.Fx = force_sp(4);
 		_nf_params_hy_htail.Fz = force_sp(5);
 
-		printf("hy horizontal th bef: r%f l%f ht%f ", (double)force_sp(0), (double)force_sp(2), (double)force_sp(4));
-		printf("hy vertical th bef: r%f l%f ht%f ", (double)force_sp(1), (double)force_sp(3), (double)force_sp(5));
+		// printf("hy horizontal th bef: r%f l%f ht%f ", (double)force_sp(0), (double)force_sp(2), (double)force_sp(4));
+		// printf("hy vertical th bef: r%f l%f ht%f ", (double)force_sp(1), (double)force_sp(3), (double)force_sp(5));
 
 		//  给水翼电机的水平分力分配负值的初步解决方法
 		if(sign(_nf_params_hy_wr.Fx) < 0)

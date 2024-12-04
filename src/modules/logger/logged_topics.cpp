@@ -51,6 +51,8 @@ void LoggedTopics::add_default_topics()
 	add_topic("adc_report");
 	add_topic("depth_estimated");
 	add_topic("debug_key_value");
+	add_topic("debug_value");
+	add_topic("debug_vect");
 	add_topic("airspeed", 1000);
 	add_optional_topic("airspeed_validated", 200);
 	add_optional_topic("autotune_attitude_control_status", 100);

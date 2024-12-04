@@ -125,7 +125,7 @@ private:
 	uORB::SubscriptionCallbackWorkItem _local_pos_sub{this, ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
-	uORB::Subscription _debug_sub{ORB_ID(debug_vect)}; // 订阅动捕位置
+	uORB::Subscription _debug_vect_sub{ORB_ID(debug_vect)}; // 订阅动捕位置
 	// uORB::Subscription _debug_sub{ORB_ID(debug_key_value)}; // 订阅动捕高度
 	uORB::Subscription _depth_estimated_sub{ORB_ID(depth_estimated)}; // depth gauge
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
