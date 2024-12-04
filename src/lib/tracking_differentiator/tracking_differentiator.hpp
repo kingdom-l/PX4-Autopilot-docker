@@ -44,7 +44,7 @@
 class TrackingDifferentiator
 {
 public:
-	TrackingDifferentiator(float r, float h);
+	TrackingDifferentiator(float h, float r0, float h0);
 	~TrackingDifferentiator() = default;
 
 	void update(float input);
@@ -57,7 +57,8 @@ public:
 		return _x2_pre;
 	}
 
-	void set_params(float r0, float h0){
+	void set_params(float h, float r0, float h0){
+		_h = h;
 		_r0 = r0;
 		_h0 = h0;
 	}
@@ -67,11 +68,12 @@ public:
 
 private:
 
-	float fhan(float x1, float x2, float r, float h);
+	float fhan(float x1, float x2, float r0, float h0);
 	float fsg(float x, float d);
 
 	float _x1_pre;
 	float _x2_pre;
+	float _h;
 	float _r0;
 	float _h0;
 

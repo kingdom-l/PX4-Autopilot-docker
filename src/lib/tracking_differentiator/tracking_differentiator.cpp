@@ -34,9 +34,10 @@
 #include "tracking_differentiator.hpp"
 
 
-TrackingDifferentiator::TrackingDifferentiator(float r, float h) :
-	_r0(r),
-	_h0(h)
+TrackingDifferentiator::TrackingDifferentiator(float h, float r0, float h0) :
+	_h(h),
+	_r0(r0),
+	_h0(h0)
 {
 	_x1_pre = 0.0f;
 	_x2_pre = 0.0f;
@@ -45,24 +46,22 @@ TrackingDifferentiator::TrackingDifferentiator(float r, float h) :
 void TrackingDifferentiator::update(float input)
 {
 
-	float h = 0.01;
-
-	float x1k = _x1_pre + h * _x2_pre;
-	float x2k = _x2_pre + h * fhan(_x1_pre - input, _x2_pre, _r0, _h0);
+	float x1k = _x1_pre + _h * _x2_pre;
+	float x2k = _x2_pre + _h * fhan(_x1_pre - input, _x2_pre, _r0, _h0);
 	_x1_pre = x1k;
 	_x2_pre = x2k;
 
 }
 
-float TrackingDifferentiator::fhan(float x1, float x2, float r, float h)
+float TrackingDifferentiator::fhan(float x1, float x2, float r0, float h0)
 {
-	float d = r * powf(h, 2);
-	float a0 = h * x2;
+	float d = r0 * powf(h0, 2);
+	float a0 = h0 * x2;
 	float y = x1 + a0;
 	float a1 = sqrt(d * (d + 8.f * fabsf(y)));
 	float a2 = a0 + matrix::sign(y) * (a1 - d) / 2.f;
 	float a = ( a0 + y) * fsg(y, d) + a2 * (1 - fsg(y, d));
-	float u = -r * (a / d) * fsg(a, d) - r * matrix::sign(a) * (1 - fsg(a, d));
+	float u = -r0 * (a / d) * fsg(a, d) - r0 * matrix::sign(a) * (1 - fsg(a, d));
 
 	return u;
 }
