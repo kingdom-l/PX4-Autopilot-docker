@@ -82,6 +82,7 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/debug_array.h>
 #include <uORB/topics/debug_key_value.h>
 #include <uORB/topics/debug_value.h>
 #include <uORB/topics/debug_vect.h>
@@ -93,6 +94,7 @@
 #include <lib/three_order_eso/three_order_eso.hpp>
 #include <lib/tracking_differentiator/tracking_differentiator.hpp>
 #include <lib/mathlib/math/filter/LowPassFilter2p.hpp>
+#include <uORB/topics/vehicle_local_position_setpoint.h>
 // #include <lib/Eigen/Eigen.h>
 
 using namespace time_literals;
@@ -131,8 +133,14 @@ private:
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 
 	uORB::Publication<vehicle_attitude_setpoint_s> _attitude_sp_pub;
+	uORB::Publication<vehicle_local_position_setpoint_s> _vehicle_local_pos_sp_pub{ORB_ID(vehicle_local_position_setpoint)};
 	struct debug_value_s _dbg_val;
 	orb_advert_t pub_dbg_val;
+
+	struct debug_array_s _dbg_arr;
+	orb_advert_t pub_dbg_arr;
+
+	vehicle_local_position_setpoint_s _pos_sp{};
 
 	vehicle_local_position_s _local_pos{};
 	depth_estimated_s _depth_estimated{};
@@ -144,9 +152,9 @@ private:
 
 	TwoOrderEso _depth_eso{100, 300};
 	ThreeOrderEso _depth_eso1{100, 300, 1000};
-	TrackingDifferentiator _pos_x_td{100, 0.07};
+	TrackingDifferentiator _pos_x_td{0.01, 100, 0.07};
 	math::LowPassFilter2p<float> _pos_x_lpf{800.f, 40.f};
-	float _vx_hat;
+	float _vx_hat, _px_hat;
 	// Eigen::MatrixXf _mat(3, 3);
 
 	float _water_density = 1000;
@@ -175,7 +183,10 @@ private:
 		(ParamFloat<px4::params::HY_R_LIM>) _param_hy_r_lim,
 		(ParamFloat<px4::params::HY_DEPSAT_MAX>) _param_hy_depsat_max,
 		(ParamFloat<px4::params::HY_DEPSAT_K>) _param_hy_depsat_k,
-		(ParamFloat<px4::params::HY_DEPTH_SP>) _param_hy_depth_sp
+		(ParamFloat<px4::params::HY_DEPTH_SP>) _param_hy_depth_sp,
+		(ParamFloat<px4::params::HY_POS_TD_H>) _param_hy_pos_td_h,
+		(ParamFloat<px4::params::HY_POS_TD_R0>) _param_hy_pos_td_r0,
+		(ParamFloat<px4::params::HY_POS_TD_H0>) _param_hy_pos_td_h0
 
 	)
 

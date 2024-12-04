@@ -50,6 +50,7 @@ void LoggedTopics::add_default_topics()
 	add_optional_topic("actuator_controls_status_0", 300);
 	add_topic("adc_report");
 	add_topic("depth_estimated");
+	add_topic("debug_array");
 	add_topic("debug_key_value");
 	add_topic("debug_value");
 	add_topic("debug_vect");

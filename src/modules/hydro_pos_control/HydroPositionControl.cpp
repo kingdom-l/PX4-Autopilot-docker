@@ -57,6 +57,12 @@ HydroPositionControl::HydroPositionControl() :
 	_dbg_val.value = 0.0f;
 	_dbg_val.ind = 0;
 	pub_dbg_val = orb_advertise(ORB_ID(debug_value), &_dbg_val);
+
+	for(float &i :  _dbg_arr.data){
+		i = 0.f;
+	}
+	_dbg_arr.id = 0;
+	pub_dbg_arr = orb_advertise(ORB_ID(debug_array), &_dbg_arr);
 }
 
 HydroPositionControl::~HydroPositionControl()
@@ -125,10 +131,10 @@ HydroPositionControl::Run()
 
 		// 订阅动捕测量的深度信息
 		// struct debug_key_value_s debug_value;
-		struct debug_vect_s debug_val; // 订阅动捕测量的位置信息
-		_debug_vect_sub.copy(&debug_val);
+		struct debug_vect_s debug_vec; // 订阅动捕测量的位置信息
+		_debug_vect_sub.copy(&debug_vec);
 		// float depth = -debug_value.value; //_local_pos.z; // 向下为正
-		float depth = -debug_val.z;
+		float depth = -debug_vec.z;
 
 		// 对位置进行低通滤波
 		// _dbg_key.timestamp = hrt_absolute_time(); // or
@@ -137,11 +143,26 @@ HydroPositionControl::Run()
 		// orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
 
 		// 使用TD估计速度，并发布debug_value消息，在mavlink inspector显示
-		_pos_x_td.update(debug_val.x);
+		_pos_x_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
+		_pos_x_td.update(debug_vec.x);
 		_vx_hat = _pos_x_td.getDerivative();
-		_dbg_val.value = _vx_hat;
-		_dbg_val.timestamp = hrt_absolute_time();
-		orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
+		_px_hat = _pos_x_td.getSmoothedSignal();
+
+		// _dbg_val.value = _px_hat; // 判断一下TD的滤波输出如何
+		// _dbg_val.timestamp = hrt_absolute_time();
+		// orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
+
+		// _dbg_arr.timestamp = hrt_absolute_time();
+		// _dbg_arr.data[0] = debug_vec.x;
+		// _dbg_arr.data[1] = _pos_x_td.getSmoothedSignal(); // 判断一下TD的滤波输出如何
+		// _dbg_arr.data[2]= _pos_x_td.getDerivative(); // 判断一下TD的速度估计如何
+		// orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
+
+		_pos_sp.timestamp = hrt_absolute_time();
+		_pos_sp.x = debug_vec.x;
+		_pos_sp.y = _pos_x_td.getSmoothedSignal(); // 判断一下TD的滤波输出如何
+		_pos_sp.z = _pos_x_td.getDerivative(); // 判断一下TD的速度估计如何
+		_vehicle_local_pos_sp_pub.publish(_pos_sp);
 
 		// 订阅深度计的深度信息
 		// _depth_estimated_sub.update(&_depth_estimated);

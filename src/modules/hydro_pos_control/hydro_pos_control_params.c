@@ -139,9 +139,47 @@ PARAM_DEFINE_FLOAT(HY_DEPSAT_K, 1.f);
  * @unit m
  * @min 0.0
  * @max 3.0
- * @decimal 1
- * @increment 0.5
+ * @decimal 2
+ * @increment 0.1
  * @group Hydro Position Control
  */
 PARAM_DEFINE_FLOAT(HY_DEPTH_SP, 0.f);
 
+/**
+ * Hydro position tracking differentiator params h
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1.0
+ * @decimal 3
+ * @increment 0.001
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_POS_TD_H, 0.01f);
+
+/**
+ * Hydro position tracking differentiator params r0
+ *
+ *
+ * @unit
+ * @min 30.0
+ * @max 600.0
+ * @decimal 1
+ * @increment 0.1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_POS_TD_R0, 100.f);
+
+/**
+ * Hydro position tracking differentiator params h0
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_POS_TD_H0, 0.07f);
