@@ -45,7 +45,6 @@
 
 #ifndef HYDRO_YAW_CONTROLLER_H
 #define HYDRO_YAW_CONTROLLER_H
-
 class YawController
 {
 public:

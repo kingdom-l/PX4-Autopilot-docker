@@ -107,12 +107,12 @@ HydroControlAllocator::parameters_update()
 	_hy_effectiveness(3,0) = _st_info.z2;  _hy_effectiveness(3,1) = -_st_info.x2; _hy_effectiveness(3,2) = _st_info.z2;
 	_hy_effectiveness(3,3) = -_st_info.x2; _hy_effectiveness(3,4) = 0;            _hy_effectiveness(3,5) = _st_info.xe;
 
-	// _hy_effectiveness(4,0) = -(_st_info.y2+_st_info.yT); _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = -(_st_info.y2-_st_info.yT);
-	// _hy_effectiveness(4,3) = 0;                          _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
+	_hy_effectiveness(4,0) = -(_st_info.y2+_st_info.yT); _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = -(_st_info.y2-_st_info.yT);
+	_hy_effectiveness(4,3) = 0;                          _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
 
 	// 暂时不考虑yaw力矩
-	_hy_effectiveness(4,0) = 0; _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = 0;
-	_hy_effectiveness(4,3) = 0; _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
+	// _hy_effectiveness(4,0) = 0; _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = 0;
+	// _hy_effectiveness(4,3) = 0; _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
 
 
 	// _hy_effectiveness = hy_effectiveness;
@@ -328,7 +328,7 @@ void HydroControlAllocator::Run()
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
 		optim(x_opt[2], _nf_params_hy_htail); // 需要考虑如何融合计算得到的两个舵偏角以及舵机角度归一化
-						      // 仅考虑尾翼的z轴分力
+						      // 仅考虑尾翼的z轴分力，此处的尾翼舵面是以机体y轴逆时针旋转为正，但实际上是顺时针为正
 
 		printf("hy opt thrust: r%f l%f ht%f ", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()), (double)(x_opt[2][1]/_param_hy_thrust_max.get()));
 		printf("hy opt gamma: r%f l%f %f\n", (double)x_opt[0][0], (double)x_opt[1][0], (double)x_opt[2][0]);
@@ -358,7 +358,7 @@ void HydroControlAllocator::Run()
 		// 右水翼舵机，rad转为无量纲
 		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
 		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = math::constrain(x_opt[1][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
-		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(x_opt[2][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f); // /_param_hy_wing_ang_max.get()
+		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(-x_opt[2][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f); // /_param_hy_wing_ang_max.get()
 
 		_hydro_motors_pub.publish(hydro_motors_msg);
 		_hydro_servos_pub.publish(hydro_servos_msg);

@@ -238,7 +238,7 @@ void HydroRateControl::Run()
 			}
 
 			_rates_sp_sub.update(&_rates_sp);
-			// printf("_rates_sp: %f ", (double)_rates_sp.pitch);
+			// printf("_rates_sp: %f ", (double)_rates_sp.yaw);
 
 			Vector3f body_rates_setpoint = Vector3f(_rates_sp.roll, _rates_sp.pitch, _rates_sp.yaw);
 
@@ -273,6 +273,7 @@ void HydroRateControl::Run()
 			/* throttle passed through if it is finite */
 			_hydro_thrust_setpoint.xyz[0] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ? _rates_sp.thrust_body[0] : 0.0f;
 			// printf("here11 %f ", (double)_hydro_thrust_setpoint.xyz[0]); // 油门量[0, 1]
+			// printf("hy_torque: %f %f %f \n", (double)_hydro_torque_setpoint.xyz[0], (double)_hydro_torque_setpoint.xyz[1], (double)_hydro_torque_setpoint.xyz[2]);
 
 			/* scale effort by battery status */
 			if (_param_hy_bat_scale_en.get() && _hydro_thrust_setpoint.xyz[0] > 0.1f) {

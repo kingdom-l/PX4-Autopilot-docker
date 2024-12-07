@@ -128,8 +128,7 @@ private:
 
 		(ParamFloat<px4::params::HY_R_RMAX>) _param_hy_r_rmax,		//机体坐标系下roll变化率限幅
 		(ParamFloat<px4::params::HY_R_TC>) _param_hy_r_tc,			//roll控制器比例时间常数（就是比例因子的倒数）
-
-		(ParamFloat<px4::params::HY_Y_RMAX>) _param_hy_y_rmax,			//机体坐标系下yaw变化率限幅（yaw的变化率直接由当前的roll角和pitch角计算得到，没有反馈控制）
+		(ParamFloat<px4::params::HY_Y_RMAX>) _param_hy_y_rmax,
 
 		(ParamFloat<px4::params::HY_PSP_OFF>) _param_hy_psp_off,		//pitch杆量为0时的pitch偏移量
 		(ParamFloat<px4::params::HY_MAN_P_MAX>) _param_hy_man_p_max,		//pitch杆量为最大时的pitch角度

@@ -235,7 +235,7 @@ void HydroAttitudeControl::Run()
 		vehicle_manual_poll(euler_angles.psi());
 
 		vehicle_attitude_setpoint_poll();
-		// printf("att_sp: %f \n", (double)_att_sp.pitch_body);
+		// printf("att_sp: %f %f %f\n", (double)_att_sp.roll_body, (double)_att_sp.pitch_body, (double)_att_sp.yaw_body);
 
 		_vehicle_control_mode_sub.update(&_vhycontrol_mode);
 		// printf("att_control_mode: %i %i %i \n", _vhycontrol_mode.flag_control_manual_enabled, _vhycontrol_mode.flag_control_attitude_enabled,
@@ -275,7 +275,10 @@ void HydroAttitudeControl::Run()
 				/* Publish the rate setpoint for analysis once available */
 				_rates_sp.roll = body_rates_setpoint(0);
 				_rates_sp.pitch = body_rates_setpoint(1);
-				_rates_sp.yaw = body_rates_setpoint(2);
+				// _rates_sp.yaw = body_rates_setpoint(2);
+				_rates_sp.yaw = math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
+										  -radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
+				printf("rate_sp: %f %f %f\n", (double)_rates_sp.roll, (double)_rates_sp.pitch, (double)_rates_sp.yaw);
 
 				_rates_sp.timestamp = hrt_absolute_time();
 
