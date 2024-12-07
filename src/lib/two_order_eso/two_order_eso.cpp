@@ -37,7 +37,8 @@
 #include "two_order_eso.hpp"
 
 
-TwoOrderEso::TwoOrderEso(float beta1, float beta2) :
+TwoOrderEso::TwoOrderEso(float b0, float beta1, float beta2) :
+	_b0(b0),
 	_beta1(beta1),
 	_beta2(beta2)
 {
@@ -47,13 +48,13 @@ TwoOrderEso::TwoOrderEso(float beta1, float beta2) :
 	_z20 = 0.0f;
 }
 
-void TwoOrderEso::update(float u, float y, float b)
+void TwoOrderEso::update(float u, float y)
 {
 
 	float h = 0.01;
 	float e = _z10 - y;
 
-	float z1k = _z10 + h * (_z20 + b * u - _beta1 * e);
+	float z1k = _z10 + h * (_z20 + _b0 * u - _beta1 * e);
 	float z2k = _z20 - h * _beta2 * fal(e, 0.5, 0.05);
 	_z10 = z1k;
 	_z20 = z2k;

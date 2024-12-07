@@ -150,8 +150,8 @@ private:
 	hrt_abstime _last_run{0};
 	matrix::Dcmf _R{matrix::eye<float, 3>()};
 
-	TwoOrderEso _depth_eso{100, 300};
-	ThreeOrderEso _depth_eso1{100, 300, 1000};
+	TwoOrderEso _depth_eso{5.0f, 100, 300};
+	// ThreeOrderEso _depth_eso1{100, 300, 1000};
 	TrackingDifferentiator _pos_x_td{0.01, 100, 0.07};
 	math::LowPassFilter2p<float> _pos_x_lpf{800.f, 40.f};
 	float _vx_hat, _px_hat;
@@ -186,7 +186,10 @@ private:
 		(ParamFloat<px4::params::HY_DEPTH_SP>) _param_hy_depth_sp,
 		(ParamFloat<px4::params::HY_POS_TD_H>) _param_hy_pos_td_h,
 		(ParamFloat<px4::params::HY_POS_TD_R0>) _param_hy_pos_td_r0,
-		(ParamFloat<px4::params::HY_POS_TD_H0>) _param_hy_pos_td_h0
+		(ParamFloat<px4::params::HY_POS_TD_H0>) _param_hy_pos_td_h0,
+		(ParamFloat<px4::params::HY_D_ESO_BETA1>) _param_hy_d_eso_beta1,
+		(ParamFloat<px4::params::HY_D_ESO_BETA2>) _param_hy_d_eso_beta2,
+		(ParamFloat<px4::params::HY_D_ESO_B0>) _param_hy_d_eso_b0
 
 	)
 

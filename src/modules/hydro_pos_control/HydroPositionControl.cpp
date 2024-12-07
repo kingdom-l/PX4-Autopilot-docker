@@ -134,14 +134,17 @@ HydroPositionControl::Run()
 		struct debug_vect_s debug_vec; // 订阅动捕测量的位置信息
 		_debug_vect_sub.copy(&debug_vec);
 		// float depth = -debug_value.value; //_local_pos.z; // 向下为正
-		float depth = -debug_vec.z;
+		float depth = -debug_vec.z; // depth遵循水平面以上为正，水平面以下为负
 
+		// ****** 测试低通滤波器 ******
 		// 对位置进行低通滤波
 		// _dbg_key.timestamp = hrt_absolute_time(); // or
 		// _dbg_val.timestamp = hrt_absolute_time();
 		// _dbg_val.value = _pos_x_lpf.apply(debug_val.x);
 		// orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
+		// ****** 测试低通滤波器 ******
 
+		// ****** 测试TD ******
 		// 使用TD估计速度，并发布debug_value消息，在mavlink inspector显示
 		_pos_x_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
 		_pos_x_td.update(debug_vec.x);
@@ -158,18 +161,32 @@ HydroPositionControl::Run()
 		// _dbg_arr.data[2]= _pos_x_td.getDerivative(); // 判断一下TD的速度估计如何
 		// orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
 
+		// _pos_sp.timestamp = hrt_absolute_time();
+		// _pos_sp.x = debug_vec.x;
+		// _pos_sp.y = _pos_x_td.getSmoothedSignal(); // 判断一下TD的滤波输出如何
+		// _pos_sp.z = _pos_x_td.getDerivative(); // 判断一下TD的速度估计如何
+		// _vehicle_local_pos_sp_pub.publish(_pos_sp);
+		// ****** 测试TD ******
+
+		const matrix::Eulerf euler_angles(_R);
+
+		// ****** 测试高度环ESO ******
+		_depth_eso.set_params(_param_hy_d_eso_b0.get(), _param_hy_d_eso_beta1.get(), _param_hy_d_eso_beta2.get());
+		_depth_eso.update(euler_angles.theta(), depth);
+
 		_pos_sp.timestamp = hrt_absolute_time();
-		_pos_sp.x = debug_vec.x;
-		_pos_sp.y = _pos_x_td.getSmoothedSignal(); // 判断一下TD的滤波输出如何
-		_pos_sp.z = _pos_x_td.getDerivative(); // 判断一下TD的速度估计如何
+		_pos_sp.x = depth;
+		_pos_sp.y = _depth_eso.getStateEst(); // 判断一下高度环ESO的状态估计
+		_pos_sp.z = _depth_eso.getTotalDisturbance(); // 判断一下高度环ESO的扰动估计
 		_vehicle_local_pos_sp_pub.publish(_pos_sp);
+		// ****** 测试高度环ESO ******
 
 		// 订阅深度计的深度信息
 		// _depth_estimated_sub.update(&_depth_estimated);
 		// float depth = _depth_estimated.depth_estimated;
 		// printf("depth_estimated: %f \n", (double)depth);
 
-		float depth_sp = -_param_hy_depth_sp.get();
+		float depth_sp = _param_hy_depth_sp.get(); // 遵循海平面以上为正，海平面以下为负
 
 		float depth_e = depth_sp - depth;
 		_depth_e_i = _depth_e_i + dt / 2 * (depth_e + _depth_e_pre);
@@ -185,11 +202,10 @@ HydroPositionControl::Run()
 		}
 
 		_manual_control_setpoint_sub.update(&_manual_control_setpoint);
-		const matrix::Eulerf euler_angles(_R);
 		vehicle_attitude_setpoint_s att_sp{};
 		att_sp.timestamp = hrt_absolute_time();
 		att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_r_lim.get()); // roll的手动控制反应很慢
-		att_sp.pitch_body = -pitch_sp_sat; // rad
+		att_sp.pitch_body = pitch_sp_sat; // rad
 		att_sp.yaw_body = euler_angles.psi();
 		att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f; // 最大油门量为0.7
 		// att_sp.thrust_body[2] = saturate_function(depth_e, _param_hy_depsat_max.get(), _param_hy_depsat_k.get());

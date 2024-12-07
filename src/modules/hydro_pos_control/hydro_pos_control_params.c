@@ -183,3 +183,42 @@ PARAM_DEFINE_FLOAT(HY_POS_TD_R0, 100.f);
  * @group Hydro Position Control
  */
 PARAM_DEFINE_FLOAT(HY_POS_TD_H0, 0.07f);
+
+/**
+ * Hydro depth eso params beta1
+ *
+ *
+ * @unit
+ * @min 10.0
+ * @max 600.0
+ * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_D_ESO_BETA1, 100.f);
+
+/**
+ * Hydro depth eso params beta2
+ *
+ *
+ * @unit
+ * @min 10.0
+ * @max 1000
+ * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_D_ESO_BETA2, 300.f);
+
+/**
+ * Hydro depth eso params b0
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 1
+ * @increment 0.1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_D_ESO_B0, 5.f);

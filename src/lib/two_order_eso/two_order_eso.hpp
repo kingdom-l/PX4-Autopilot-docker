@@ -45,11 +45,11 @@
 class TwoOrderEso
 {
 public:
-	TwoOrderEso(float beta1, float beta2);
+	TwoOrderEso(float b0, float beta1, float beta2);
 
 	~TwoOrderEso() = default;
 
-	void update(float u, float y, float b);
+	void update(float u, float y);
 
 	float getStateEst() const{
 		return _z10;
@@ -59,7 +59,8 @@ public:
 		return _z20;
 	}
 
-	void set_params(float beta1, float beta2){
+	void set_params(float b0, float beta1, float beta2){
+		_b0 = b0;
 		_beta1 = beta1;
 		_beta2 = beta2;
 	}
@@ -71,6 +72,7 @@ private:
 	float _z10;
 	float _z20;
 
+	float _b0;
 	float _beta1;
 	float _beta2;
 
