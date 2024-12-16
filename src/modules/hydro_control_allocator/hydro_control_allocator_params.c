@@ -82,7 +82,7 @@ PARAM_DEFINE_INT32(HY_SPEED_SELECT, 0);
  *
  * @unit N
  * @min 0
- * @max 10
+ * @max 15
  * @decimal 2
  * @increment 0.1
  * @group Hydro Control Allocator
@@ -93,14 +93,14 @@ PARAM_DEFINE_FLOAT(HY_THRUST_MAX, 10);
  * Maximum thrust Gain of a single underwater thruster
  *
  *
- * @unit N
+ * @unit
  * @min 0
  * @max 10
  * @decimal 2
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_TH_MAX_GAIN, 2);
+PARAM_DEFINE_FLOAT(HY_TH_MAX_GAIN, 1.5);
 
 /**
  * Right hydrofoil lift coefficient
@@ -342,6 +342,9 @@ PARAM_DEFINE_FLOAT(HY_ST_INFO_Z2, 0.1);
 /**
  * Structure info
  *
+ * hydrofoil tail moment weight
+ *
+ * Roll moment arm
  *
  * @unit m
  * @min 0.
@@ -355,6 +358,7 @@ PARAM_DEFINE_FLOAT(HY_ST_INFO_YT, 0.3);
 /**
  * Structure info
  *
+ * Yaw moment arm
  *
  * @unit m
  * @min 0.
@@ -363,18 +367,69 @@ PARAM_DEFINE_FLOAT(HY_ST_INFO_YT, 0.3);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_ST_INFO_YH, 0.1);
+PARAM_DEFINE_FLOAT(HY_ST_INFO_YY, 0.1);
 
 /**
  * Structure info
  *
  *
- * @unit m
+ * @unit
  * @min 0.
- * @max 1.
+ * @max 5.
  * @decimal 2
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_ST_INFO_XE, 0.3);
+PARAM_DEFINE_FLOAT(HY_ST_INFO_HT, 0.8);
 
+/**
+ * Pitch moment weight for fxr
+ *
+ *
+ * @unit
+ * @min 0.
+ * @max 50.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FXR_WEIGHT, 0);
+
+/**
+ * Pitch moment weight for fzr
+ *
+ *
+ * @unit
+ * @min -50.
+ * @max 0.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FZR_WEIGHT, -10);
+
+/**
+ * Pitch moment weight for fxl
+ *
+ *
+ * @unit
+ * @min 0.
+ * @max 50.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FXL_WEIGHT, 0);
+
+/**
+ * Pitch moment weight for fzl
+ *
+ *
+ * @unit
+ * @min -50.
+ * @max 0.
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FZL_WEIGHT, -10);

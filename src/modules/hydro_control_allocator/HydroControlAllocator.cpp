@@ -91,32 +91,46 @@ HydroControlAllocator::parameters_update()
 	_st_info.x2 = _param_hy_st_info_x2.get(); // 0.1对计算水翼电机推力有影响
 	_st_info.y2 = _param_hy_st_info_y2.get();
 	_st_info.z2 = _param_hy_st_info_z2.get();
-	_st_info.yT = _param_hy_st_info_yT.get(); // 0. 暂时取消横滚
-	_st_info.yh = _param_hy_st_info_yh.get();
-	_st_info.xe = _param_hy_st_info_xe.get();
+	_st_info.yT = _param_hy_st_info_yt.get(); // 0. 暂时取消横滚
+	_st_info.yY = _param_hy_st_info_yy.get();
+	_st_info.ht = _param_hy_st_info_ht.get();
 
-	_hy_effectiveness(0,0) = 0.8; _hy_effectiveness(0,1) = 0; _hy_effectiveness(0,2) = 0.8;
-	_hy_effectiveness(0,3) = 0;   _hy_effectiveness(0,4) = 1; _hy_effectiveness(0,5) = 0;
+	_hy_effectiveness(0,0) = 1; _hy_effectiveness(0,1) = 0; _hy_effectiveness(0,2) = 1;
+	_hy_effectiveness(0,3) = 0; _hy_effectiveness(0,4) = 0; // _hy_effectiveness(0,5) = 0;
 
-	_hy_effectiveness(1,0) = 0;   _hy_effectiveness(1,1) = 0.2; _hy_effectiveness(1,2) = 0;
-	_hy_effectiveness(1,3) = 0.2; _hy_effectiveness(1,4) = 0;   _hy_effectiveness(1,5) = 1;
+	_hy_effectiveness(1,0) = 0; _hy_effectiveness(1,1) = 1; _hy_effectiveness(1,2) = 0;
+	_hy_effectiveness(1,3) = 1; _hy_effectiveness(1,4) = 0;  // _hy_effectiveness(1,5) = 0;
 
 	_hy_effectiveness(2,0) = 0;                          _hy_effectiveness(2,1) = (_st_info.y2+_st_info.yT); _hy_effectiveness(2,2) = 0;
-	_hy_effectiveness(2,3) = (_st_info.y2-_st_info.yT);  _hy_effectiveness(2,4) = 0;                         _hy_effectiveness(2,5) = 0;
+	_hy_effectiveness(2,3) = (_st_info.y2-_st_info.yT);  _hy_effectiveness(2,4) = 0;                        // _hy_effectiveness(2,5) = 0;
 
 	_hy_effectiveness(3,0) = _st_info.z2;  _hy_effectiveness(3,1) = -_st_info.x2; _hy_effectiveness(3,2) = _st_info.z2;
-	_hy_effectiveness(3,3) = -_st_info.x2; _hy_effectiveness(3,4) = 0;            _hy_effectiveness(3,5) = _st_info.xe;
+	_hy_effectiveness(3,3) = -_st_info.x2; _hy_effectiveness(3,4) = _st_info.ht;           // _hy_effectiveness(3,5) = _st_info.xe;
 
-	_hy_effectiveness(4,0) = -(_st_info.y2+_st_info.yT); _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = -(_st_info.y2-_st_info.yT);
-	_hy_effectiveness(4,3) = 0;                          _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
+	_hy_effectiveness(4,0) = -(_st_info.y2+_st_info.yY); _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = -(_st_info.y2-_st_info.yY);
+	_hy_effectiveness(4,3) = 0;                          _hy_effectiveness(4,4) = 0; // _hy_effectiveness(4,5) = 0;
 
 	// 暂时不考虑yaw力矩
 	// _hy_effectiveness(4,0) = 0; _hy_effectiveness(4,1) = 0; _hy_effectiveness(4,2) = 0;
 	// _hy_effectiveness(4,3) = 0; _hy_effectiveness(4,4) = 0; _hy_effectiveness(4,5) = 0;
 
 
-	// _hy_effectiveness = hy_effectiveness;
-	matrix::geninv(_hy_effectiveness, _hy_mix);
+	// matrix::geninv(_hy_effectiveness, _hy_mix);
+	_hy_mix(0,0) = -(_st_info.y2-_st_info.yY)/(2*_st_info.yY); _hy_mix(0,1) = 0; _hy_mix(0,2) = 0;
+	_hy_mix(0,3) = _param_hy_fxr_weight.get();   _hy_mix(0,4) = -1/(2*_st_info.yY);
+
+	_hy_mix(1,0) = 0; _hy_mix(1,1) = -(_st_info.y2-_st_info.yT)/(2*_st_info.yT); _hy_mix(1,2) = 1/(2*_st_info.yT);
+	_hy_mix(1,3) = _param_hy_fzr_weight.get(); _hy_mix(1,4) = 0;
+
+	_hy_mix(2,0) = (_st_info.y2+_st_info.yY)/(2*_st_info.yY); _hy_mix(2,1) = 0;  _hy_mix(2,2) = 0;
+	_hy_mix(2,3) = _param_hy_fxl_weight.get();  _hy_mix(2,4) = 1/(2*_st_info.yY);
+
+	_hy_mix(3,0) = 0; _hy_mix(3,1) = (_st_info.y2+_st_info.yT)/(2*_st_info.yT);  _hy_mix(3,2) = -1/(2*_st_info.yT);
+	_hy_mix(3,3) = _param_hy_fzl_weight.get(); _hy_mix(3,4) = 0;
+
+	_hy_mix(4,0) = -_st_info.z2/_st_info.ht; _hy_mix(4,1) = _st_info.x2/_st_info.ht; _hy_mix(4,2) = 0;
+	_hy_mix(4,3) = 1/_st_info.ht;            _hy_mix(4,4) = 0;
+
 	_nf_params_hy_wr.Cl = _param_hy_rhf_cl.get();
 	_nf_params_hy_wr.Cl0 = _param_hy_rhf_cl0.get();
 	_nf_params_hy_wr.Cd = _param_hy_rhf_cd.get();
@@ -131,12 +145,12 @@ HydroControlAllocator::parameters_update()
 	_nf_params_hy_wl.S_wing = _param_hy_rhf_area.get();
 	_nf_params_hy_wl.with_thrust = true;
 
-	_nf_params_hy_htail.Cl = _param_hy_htail_cl.get();
-	_nf_params_hy_htail.Cl0 = _param_hy_htail_cl0.get();
-	_nf_params_hy_htail.Cd = _param_hy_htail_cd.get();
-	_nf_params_hy_htail.Cd0 = _param_hy_htail_cd0.get();
-	_nf_params_hy_htail.S_wing = _param_hy_htail_area.get();
-	_nf_params_hy_htail.with_thrust = false;
+	// _nf_params_hy_htail.Cl = _param_hy_htail_cl.get();
+	// _nf_params_hy_htail.Cl0 = _param_hy_htail_cl0.get();
+	// _nf_params_hy_htail.Cd = _param_hy_htail_cd.get();
+	// _nf_params_hy_htail.Cd0 = _param_hy_htail_cd0.get();
+	// _nf_params_hy_htail.S_wing = _param_hy_htail_area.get();
+	// _nf_params_hy_htail.with_thrust = false;
 }
 
 SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
@@ -146,15 +160,15 @@ SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
 		float gamma = x_opt(0);
 		float T = x_opt(1);
 
-		J(0, 0) = T * sinf(gamma) - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
-		J(0, 1) = -cosf(gamma);
-		J(1, 0) = T * cosf(gamma) + 0.5f * _rho * p.S_wing * _Va2 * p.Cl * cosf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
-		J(1, 1) = sinf(gamma);
+		J(0, 0) = T * sinf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
+		J(0, 1) = -cosf(gamma) / _rho;
+		J(1, 0) = T * cosf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * p.Cl * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
+		J(1, 1) = sinf(gamma) / _rho;
 	}else{
 		// J(0, 0) = - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
 		J(0, 0) = 0;
 		J(0, 1) = 0;
-		J(1, 0) = 0.5f * _rho * p.S_wing * _Va2 * p.Cl * cosf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
+		J(1, 0) = 0.5f * p.S_wing * _Va2 * p.Cl * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
 		J(1, 1) = 0;
 	}
 
@@ -166,8 +180,8 @@ Vector2f HydroControlAllocator::func(Vector2f x_opt, NfParams p)
 	float gamma = x_opt(0);
 	float T = x_opt(1);
 	Vector2f out;
-	out(0) = p.Fx - T * cosf(gamma) - 0.5f * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cosf(_alpha);
-	out(1) = p.Fz + T * sinf(gamma) + 0.5f * _rho * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cosf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sinf(_alpha);
+	out(0) = p.Fx / _rho - T * cosf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sinf(_alpha) + 0.5f * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cosf(_alpha);
+	out(1) = p.Fz / _rho + T * sinf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sinf(_alpha);
 	return out;
 }
 
@@ -196,7 +210,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 			x_new = x + delta_x;
 
 			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()); // rad
-			float x1_max = math::constrain((_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
+			float x1_max = math::constrain(_param_hy_th_max_gain.get()*(_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
 			x_new(1) = math::constrain(x_new(1), 0.f, x1_max);
 
 			x = x_new;
@@ -251,7 +265,7 @@ void HydroControlAllocator::Run()
 		_wrench_sp(2) = hydro_torque_setpoint.xyz[0]; // 无量纲[-1, 1]
 		_wrench_sp(3) = hydro_torque_setpoint.xyz[1];
 		_wrench_sp(4) = hydro_torque_setpoint.xyz[2]; // yaw轴扭矩暂时置零
-		// printf("_torque_sp: %f %f %f ", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
+		// printf("_wrench_sp: %f %f %f ", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 		do_update = true;
 		_timestamp_sample = hydro_torque_setpoint.timestamp_sample;
 	}
@@ -259,15 +273,15 @@ void HydroControlAllocator::Run()
 	// Also run allocator on thrust setpoint changes if the torque setpoint
 	// has not been updated for more than 5ms
 	if (_hydro_thrust_setpoint_sub.update(&hydro_thrust_setpoint)) {
-		_wrench_sp(0) = hydro_thrust_setpoint.xyz[0] * _param_hy_thrust_max.get() * 2; // 油门量[0, 1],但实际分配中推力是有量纲
+		_wrench_sp(0) = hydro_thrust_setpoint.xyz[0] * 2.0f * _param_hy_thrust_max.get(); // 油门量[0, 1],但实际分配中推力改为无量纲
 		_wrench_sp(1) = hydro_thrust_setpoint.xyz[2];
-		// printf("_thrust_sp: %f ", (double)_wrench_sp(0));
+		// printf("_wrench_sp: %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(1));
 		if (dt > 0.005f) {
 			do_update = true;
 			_timestamp_sample = hydro_thrust_setpoint.timestamp_sample;
 		}
 	}
-	// printf("_wrench_sp: %f %f %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
+	// printf(" %f %f %f \n", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 
 	if(do_update){
 		_last_run = now;
@@ -300,38 +314,54 @@ void HydroControlAllocator::Run()
 			parameters_update();
 		}
 		// 当需要产生低头力矩时，此处会给水翼电机的水平分力分配负值
-		matrix::Vector<float, 6> force_sp = _hy_mix * _wrench_sp;
+		matrix::Vector<float, HY_NUM_FORCE_COMPS> force_sp = _hy_mix * _wrench_sp;
+		// printf("hy_mix: \n");
+		// printf(" %f %f %f %f %f \n",(double)_hy_mix(0, 0), (double)_hy_mix(0, 1), (double)_hy_mix(0, 2), (double)_hy_mix(0, 3), (double)_hy_mix(0, 4));
+		// printf(" %f %f %f %f %f \n",(double)_hy_mix(1, 0), (double)_hy_mix(1, 1), (double)_hy_mix(1, 2), (double)_hy_mix(1, 3), (double)_hy_mix(1, 4));
+		// printf(" %f %f %f %f %f \n",(double)_hy_mix(2, 0), (double)_hy_mix(2, 1), (double)_hy_mix(2, 2), (double)_hy_mix(2, 3), (double)_hy_mix(2, 4));
+		// printf(" %f %f %f %f %f \n",(double)_hy_mix(3, 0), (double)_hy_mix(3, 1), (double)_hy_mix(3, 2), (double)_hy_mix(3, 3), (double)_hy_mix(3, 4));
+		// printf(" %f %f %f %f %f \n",(double)_hy_mix(4, 0), (double)_hy_mix(4, 1), (double)_hy_mix(4, 2), (double)_hy_mix(4, 3), (double)_hy_mix(4, 4));
 
 		_nf_params_hy_wr.Fx = force_sp(0);
 		_nf_params_hy_wr.Fz = force_sp(1);
 		_nf_params_hy_wl.Fx = force_sp(2);
 		_nf_params_hy_wl.Fz = force_sp(3);
-		_nf_params_hy_htail.Fx = force_sp(4);
-		_nf_params_hy_htail.Fz = force_sp(5);
+		// _nf_params_hy_htail.Fx = force_sp(4);
+		// _nf_params_hy_htail.Fz = force_sp(5);
+		_hy_tail_torque = force_sp(4);
 
-		// printf("hy horizontal th bef: r%f l%f ht%f ", (double)force_sp(0), (double)force_sp(2), (double)force_sp(4));
-		// printf("hy vertical th bef: r%f l%f ht%f ", (double)force_sp(1), (double)force_sp(3), (double)force_sp(5));
+		// printf("hy horizontal th bef: r:%f l:%f ", (double)force_sp(0), (double)force_sp(2));
+		// printf("hy vertical th bef: r:%f l:%f \n", (double)force_sp(1), (double)force_sp(3));
 
 		//  给水翼电机的水平分力分配负值的初步解决方法
+		float sum_fx = _nf_params_hy_wr.Fx + _nf_params_hy_wl.Fx;
+		if(sum_fx < 0){
+			sum_fx *= 0.5f;
+			_nf_params_hy_wr.Fx -= sum_fx;
+			_nf_params_hy_wl.Fx -= sum_fx;
+		}
 		if(sign(_nf_params_hy_wr.Fx) < 0)
 		{
+			_nf_params_hy_wl.Fx += _nf_params_hy_wr.Fx;
 			_nf_params_hy_wr.Fx = 0.f;
 		}
 		if(sign(_nf_params_hy_wl.Fx) < 0)
 		{
+			_nf_params_hy_wr.Fx += _nf_params_hy_wl.Fx;
 			_nf_params_hy_wl.Fx = 0.f;
 		}
 
-		float x_opt[3][2] = {{0, _nf_params_hy_wr.Fx*0.8f},
-			       {0, _nf_params_hy_wl.Fx*0.8f},
-			       {0, 0}}; // 初值取得可能有问题，cosf单位rad
+		// float x_opt[2][2] = {{math::constrain(atan2f(_nf_params_hy_wr.Fz, _nf_params_hy_wr.Fx) * 0.5f, -_param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()), _nf_params_hy_wr.Fx*0.5f},
+		// 	       	     {math::constrain(atan2f(_nf_params_hy_wl.Fz, _nf_params_hy_wl.Fx) * 0.5f, -_param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()), _nf_params_hy_wl.Fx*0.5f}};
+
+		float x_opt[2][2] = {{0.f, _nf_params_hy_wr.Fx*0.5f},
+			       	     {0.f, _nf_params_hy_wl.Fx*0.5f}}; // 初值取得可能有问题，cosf单位rad
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
-		optim(x_opt[2], _nf_params_hy_htail); // 需要考虑如何融合计算得到的两个舵偏角以及舵机角度归一化
-						      // 仅考虑尾翼的z轴分力，此处的尾翼舵面是以机体y轴逆时针旋转为正，但实际上是顺时针为正
 
-		printf("hy opt thrust: r%f l%f ht%f ", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()), (double)(x_opt[2][1]/_param_hy_thrust_max.get()));
-		printf("hy opt gamma: r%f l%f %f\n", (double)x_opt[0][0], (double)x_opt[1][0], (double)x_opt[2][0]);
+		// printf("hy opt gamma: r:%f l:%f ", (double)(x_opt[0][0]/_param_hy_wing_ang_max.get()), (double)(x_opt[1][0]/_param_hy_wing_ang_max.get()));
+		// printf("hy opt thrust: r:%f l:%f ht:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()), (double)(x_opt[2][1]/_param_hy_thrust_max.get()));
+		// printf("hy opt thrust: r:%f l:%f ht:%f \n", (double)(x_opt[0][1]), (double)(x_opt[1][1]), (double)_hy_tail_torque);
 
 		// LPFilter(x_opt[0][0], &_lpf_hy_wr);
 		// x_opt[0][0] = _lpf_hy_wr.out;
@@ -339,7 +369,7 @@ void HydroControlAllocator::Run()
 		// x_opt[1][0] = _lpf_hy_wl.out;
 
 		// printf("lpf_para: %f %f %f %f \n", (double)_lpf_hy_wr.T, (double)_lpf_hy_wr.fc, (double)_lpf_hy_wr.alpha, (double)_lpf_hy_wl.alpha);
-		// printf("hy opt gamma aft: r%f l%f %f\n", (double)x_opt[0][0], (double)x_opt[1][0], (double)x_opt[2][0]);
+		// printf("hy opt gamma aft: r%f l%f \n", (double)x_opt[0][0], (double)x_opt[1][0]);
 
 		//根据参数设置的对应关系填入数据并发送
 		actuator_motors_s hydro_motors_msg{0};
@@ -352,13 +382,13 @@ void HydroControlAllocator::Run()
 		hydro_servos_msg.timestamp_sample = hydro_torque_setpoint.timestamp_sample;
 
 		// 此处hy_rt_idx[0]对应右边电机的Motor编号
-		hydro_motors_msg.control[_param_hy_rmotor_idx.get() - 1] = math::constrain(x_opt[0][1] / _param_hy_thrust_max.get(), 0.f, 1.f); // 右水翼电机
-		hydro_motors_msg.control[_param_hy_lmotor_idx.get() - 1] = math::constrain(x_opt[1][1] / _param_hy_thrust_max.get(), 0.f, 1.f); // 左水翼电机
+		hydro_motors_msg.control[_param_hy_rmotor_idx.get() - 1] = math::constrain(x_opt[0][1]/_param_hy_thrust_max.get(), 0.f, 1.f); // 右水翼电机
+		hydro_motors_msg.control[_param_hy_lmotor_idx.get() - 1] = math::constrain(x_opt[1][1]/_param_hy_thrust_max.get(), 0.f, 1.f); // 左水翼电机
 
 		// 右水翼舵机，rad转为无量纲
 		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
 		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = math::constrain(x_opt[1][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
-		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(-x_opt[2][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f); // /_param_hy_wing_ang_max.get()
+		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(_hy_tail_torque, -1.f, 1.f); // /_param_hy_wing_ang_max.get()
 
 		_hydro_motors_pub.publish(hydro_motors_msg);
 		_hydro_servos_pub.publish(hydro_servos_msg);

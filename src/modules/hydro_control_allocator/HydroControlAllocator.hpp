@@ -58,7 +58,7 @@ using namespace time_literals;
 class HydroControlAllocator : public ModuleBase<HydroControlAllocator>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
-	static constexpr int HY_NUM_FORCE_COMPS = 6;
+	static constexpr int HY_NUM_FORCE_COMPS = 5;
 
 	HydroControlAllocator();
 	~HydroControlAllocator() override;
@@ -99,8 +99,8 @@ private:
 		float y2;
 		float z2;
 		float yT;
-		float yh;
-		float xe;
+		float yY;
+		float ht;
 
 	};
 	StructureInfo _st_info;
@@ -131,7 +131,8 @@ private:
 	float _alpha;
 	NfParams _nf_params_hy_wr;
 	NfParams _nf_params_hy_wl;
-	NfParams _nf_params_hy_htail;
+	// NfParams _nf_params_hy_htail;
+	float _hy_tail_torque;
 	LowPassFilter _lpf_hy_wr;
 	LowPassFilter _lpf_hy_wl;
 
@@ -159,11 +160,13 @@ private:
 		(ParamFloat<px4::params::HY_RHF_CD>) _param_hy_rhf_cd,
 		(ParamFloat<px4::params::HY_RHF_CD0>) _param_hy_rhf_cd0,
 		(ParamFloat<px4::params::HY_RHF_AREA>) _param_hy_rhf_area,
+
 		(ParamFloat<px4::params::HY_HTAIL_CL>) _param_hy_htail_cl,
 		(ParamFloat<px4::params::HY_HTAIL_CL0>) _param_hy_htail_cl0,
 		(ParamFloat<px4::params::HY_HTAIL_CD>) _param_hy_htail_cd,
 		(ParamFloat<px4::params::HY_HTAIL_CD0>) _param_hy_htail_cd0,
 		(ParamFloat<px4::params::HY_HTAIL_AREA>) _param_hy_htail_area,
+
 		(ParamFloat<px4::params::HY_WING_ANG_MAX>) _param_hy_wing_ang_max, // rad
 		(ParamInt<px4::params::HY_RMOTOR_IDX>) _param_hy_rmotor_idx,
 		(ParamInt<px4::params::HY_LMOTOR_IDX>) _param_hy_lmotor_idx,
@@ -173,10 +176,14 @@ private:
 		(ParamFloat<px4::params::HY_ST_INFO_X2>) _param_hy_st_info_x2,
 		(ParamFloat<px4::params::HY_ST_INFO_Y2>) _param_hy_st_info_y2,
 		(ParamFloat<px4::params::HY_ST_INFO_Z2>) _param_hy_st_info_z2,
-		(ParamFloat<px4::params::HY_ST_INFO_YT>) _param_hy_st_info_yT,
-		(ParamFloat<px4::params::HY_ST_INFO_YH>) _param_hy_st_info_yh,
-		(ParamFloat<px4::params::HY_ST_INFO_XE>) _param_hy_st_info_xe
+		(ParamFloat<px4::params::HY_ST_INFO_YT>) _param_hy_st_info_yt,
+		(ParamFloat<px4::params::HY_ST_INFO_YY>) _param_hy_st_info_yy,
+		(ParamFloat<px4::params::HY_ST_INFO_HT>) _param_hy_st_info_ht,
 
+		(ParamFloat<px4::params::HY_FXR_WEIGHT>) _param_hy_fxr_weight,
+		(ParamFloat<px4::params::HY_FZR_WEIGHT>) _param_hy_fzr_weight,
+		(ParamFloat<px4::params::HY_FXL_WEIGHT>) _param_hy_fxl_weight,
+		(ParamFloat<px4::params::HY_FZL_WEIGHT>) _param_hy_fzl_weight
 	)
 
 };
