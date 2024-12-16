@@ -272,6 +272,7 @@ void HydroRateControl::Run()
 
 			/* throttle passed through if it is finite */
 			_hydro_thrust_setpoint.xyz[0] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ? _rates_sp.thrust_body[0] : 0.0f;
+			_hydro_thrust_setpoint.xyz[2] = PX4_ISFINITE(_rates_sp.thrust_body[2]) ? _rates_sp.thrust_body[2] : 0.0f;
 			// printf("here11 %f ", (double)_hydro_thrust_setpoint.xyz[0]); // 油门量[0, 1]
 			// printf("hy_torque: %f %f %f \n", (double)_hydro_torque_setpoint.xyz[0], (double)_hydro_torque_setpoint.xyz[1], (double)_hydro_torque_setpoint.xyz[2]);
 

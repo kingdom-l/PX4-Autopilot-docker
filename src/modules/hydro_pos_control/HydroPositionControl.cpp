@@ -207,11 +207,12 @@ HydroPositionControl::Run()
 		att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_r_lim.get()); // roll的手动控制反应很慢
 		att_sp.pitch_body = pitch_sp_sat; // rad
 		att_sp.yaw_body = euler_angles.psi();
-		att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f; // 最大油门量为0.7
-		// att_sp.thrust_body[2] = saturate_function(depth_e, _param_hy_depsat_max.get(), _param_hy_depsat_k.get());
+		att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f; // 最大油门量为1
+		// att_sp.thrust_body[2] = -saturate_function(depth_e, _param_hy_depsat_max.get(), _param_hy_depsat_k.get()) / _param_hy_depsat_max.get();
 		_attitude_sp_pub.publish(att_sp);
 
 		// printf("pos: %f %f %f %f %f\n", (double)depth_sp, (double)depth, (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);
+		// printf("thrust_sp: %f %f \n", (double)att_sp.thrust_body[0], (double)att_sp.thrust_body[2]);
 	}
 
 	perf_end(_loop_perf);

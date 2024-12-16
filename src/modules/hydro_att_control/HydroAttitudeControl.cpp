@@ -278,7 +278,7 @@ void HydroAttitudeControl::Run()
 				// _rates_sp.yaw = body_rates_setpoint(2);
 				_rates_sp.yaw = math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
 										  -radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
-				printf("rate_sp: %f %f %f\n", (double)_rates_sp.roll, (double)_rates_sp.pitch, (double)_rates_sp.yaw);
+				// printf("rate_sp: %f %f %f\n", (double)_rates_sp.roll, (double)_rates_sp.pitch, (double)_rates_sp.yaw);
 
 				_rates_sp.timestamp = hrt_absolute_time();
 
