@@ -1399,9 +1399,9 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 	case MAVLINK_MODE_NORMAL:
 		configure_stream_local("ADSB_VEHICLE", unlimited_rate);
 		configure_stream_local("ALTITUDE", 1.0f);
-		configure_stream_local("ATTITUDE", 15.0f);
+		configure_stream_local("ATTITUDE", 100.0f);
 		configure_stream_local("ATTITUDE_QUATERNION", 10.0f);
-		configure_stream_local("ATTITUDE_TARGET", 2.0f);
+		configure_stream_local("ATTITUDE_TARGET", 100.0f); // 2.0f
 		configure_stream_local("AVAILABLE_MODES", 0.3f);
 		configure_stream_local("BATTERY_STATUS", 0.5f);
 		configure_stream_local("CAMERA_IMAGE_CAPTURED", unlimited_rate);
@@ -2956,7 +2956,7 @@ Mavlink::display_status()
 #endif // MAVLINK_UDP
 
 	case Protocol::SERIAL:
-		printf("serial (%s @%i)\n", _device_name, _baudrate);
+		printf("serial (%s @%i), data rate: %d B/s\n", _device_name, _baudrate, _datarate);
 		break;
 	}
 
