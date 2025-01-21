@@ -77,6 +77,18 @@ PARAM_DEFINE_FLOAT(HY_PR_D, 0.f);
 PARAM_DEFINE_FLOAT(HY_PR_I, 0.1f);
 
 /**
+ * Thrust Compensation for Pitch rate.
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_PR_TCP, 0.1f);
+
+/**
  * Pitch rate integrator limit
  *
  * @min 0.0
@@ -470,6 +482,76 @@ PARAM_DEFINE_FLOAT(HY_AIRSPD_MIN, 10.0f); //最小空速
  * @min 0
  * @decimal 1
  * @increment 0.5
- * @group FW Attitude Control
+ * @group Hydro Rate Control
  */
 PARAM_DEFINE_FLOAT(HY_MAN_YR_MAX, 30.f);
+
+/**
+ * Enable LPF for roll rate
+ *
+ * 0 disable low pass filter for roll rate
+ * 1 enable low pass filter for roll rate
+ *
+ * @boolean
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_INT32(HY_RR_LPF_EN, 0);
+
+/**
+ * Sample freq of roll rate
+ *
+ *
+ * @unit
+ * @min 0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_RR_LPF_FS, 300.f);
+
+/**
+ * Cutoff freq of roll rate
+ *
+ *
+ * @unit
+ * @min 0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_RR_LPF_FC, 30.f);
+
+/**
+ * Enable LPF for yaw rate
+ *
+ * 0 disable low pass filter for yaw rate
+ * 1 enable low pass filter for yaw rate
+ *
+ * @boolean
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_INT32(HY_YR_LPF_EN, 0);
+
+/**
+ * Sample freq of yaw rate
+ *
+ *
+ * @unit
+ * @min 0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_YR_LPF_FS, 300.f);
+
+/**
+ * Cutoff freq of yaw rate
+ *
+ *
+ * @unit
+ * @min 0
+ * @decimal 1
+ * @increment 0.5
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_YR_LPF_FC, 30.f);

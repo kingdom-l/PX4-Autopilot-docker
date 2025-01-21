@@ -126,6 +126,17 @@ private:
 	float _airspeed_scaling{1.0f};
 
 	float _battery_scale{1.0f};
+	struct LowPassFilter{
+		float T;
+		float fc;
+		float alpha;
+		float out;
+	};
+
+	LowPassFilter _hy_rollr_lpf;
+	LowPassFilter _hy_yawr_lpf;
+
+	void LPFilter(float in, LowPassFilter* lpf_params);
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_AIRSPD_MAX>) _param_hy_airspd_max,		//最大空速
@@ -158,6 +169,7 @@ private:
 		(ParamFloat<px4::params::HY_PR_IMAX>) _param_hy_pr_imax,
 		(ParamFloat<px4::params::HY_PR_P>) _param_hy_pr_p,
 		(ParamFloat<px4::params::HY_PR_D>) _param_hy_pr_d,
+		(ParamFloat<px4::params::HY_PR_TCP>) _param_hy_pr_tcp,
 
 		(ParamFloat<px4::params::HY_RLL_TO_YAW_FF>) _param_hy_rll_to_yaw_ff,	//将roll轴力矩直接前馈到yaw轴上
 		(ParamFloat<px4::params::HY_RR_FF>) _param_hy_rr_ff,
@@ -176,7 +188,13 @@ private:
 		(ParamFloat<px4::params::TRIM_ROLL>) _param_trim_roll,
 		(ParamFloat<px4::params::TRIM_YAW>) _param_trim_yaw,
 
-		(ParamFloat<px4::params::HY_THR_TO_PIT_FF>) _param_thr_to_pit_ff	//推力前馈到pit轴力矩上
+		(ParamFloat<px4::params::HY_THR_TO_PIT_FF>) _param_thr_to_pit_ff,	//推力前馈到pit轴力矩上
+		(ParamBool<px4::params::HY_RR_LPF_EN>) _param_hy_rr_lpf_en,
+		(ParamFloat<px4::params::HY_RR_LPF_FS>) _param_hy_rr_lpf_fs,
+		(ParamFloat<px4::params::HY_RR_LPF_FC>) _param_hy_rr_lpf_fc,
+		(ParamBool<px4::params::HY_YR_LPF_EN>) _param_hy_yr_lpf_en,
+		(ParamFloat<px4::params::HY_YR_LPF_FS>) _param_hy_yr_lpf_fs,
+		(ParamFloat<px4::params::HY_YR_LPF_FC>) _param_hy_yr_lpf_fc
 	)
 
 	RateControl _rate_control; ///< class for rate control calculations

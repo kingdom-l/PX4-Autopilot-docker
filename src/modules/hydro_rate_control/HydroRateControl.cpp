@@ -70,6 +70,18 @@ HydroRateControl::init()
 int
 HydroRateControl::parameters_update()
 {
+	_hy_rollr_lpf.T = 1.0f/_param_hy_rr_lpf_fs.get();
+	_hy_rollr_lpf.fc = _param_hy_rr_lpf_fc.get();
+	_hy_rollr_lpf.alpha = 2.0f * 3.14159f * _hy_rollr_lpf.fc * _hy_rollr_lpf.T;
+	_hy_rollr_lpf.alpha = _hy_rollr_lpf.alpha / (_hy_rollr_lpf.alpha + 1.0f);
+	_hy_rollr_lpf.out = 0.0f;
+
+	_hy_yawr_lpf.T = 1.0f/_param_hy_yr_lpf_fs.get();
+	_hy_yawr_lpf.fc = _param_hy_yr_lpf_fc.get();
+	_hy_yawr_lpf.alpha = 2.0f * 3.14159f * _hy_yawr_lpf.fc * _hy_yawr_lpf.T;
+	_hy_yawr_lpf.alpha = _hy_yawr_lpf.alpha / (_hy_yawr_lpf.alpha + 1.0f);
+	_hy_yawr_lpf.out = 0.0f;
+
 	const Vector3f rate_p = Vector3f(_param_hy_rr_p.get(), _param_hy_pr_p.get(), _param_hy_yr_p.get());
 	const Vector3f rate_i = Vector3f(_param_hy_rr_i.get(), _param_hy_pr_i.get(), _param_hy_yr_i.get());
 	const Vector3f rate_d = Vector3f(_param_hy_rr_d.get(), _param_hy_pr_d.get(), _param_hy_yr_d.get());
@@ -136,6 +148,11 @@ float HydroRateControl::get_airspeed_and_update_scaling()
 	_airspeed_scaling = (_param_hy_arsp_scale_en.get()) ? (_param_hy_airspd_trim.get() / airspeed_constrained) : 1.0f;
 
 	return airspeed_constrained;
+}
+
+void HydroRateControl::LPFilter(float in, LowPassFilter* lpf_params)
+{
+	lpf_params->out += lpf_params->alpha * (in - lpf_params->out);
 }
 
 void HydroRateControl::Run()
@@ -240,6 +257,15 @@ void HydroRateControl::Run()
 			_rates_sp_sub.update(&_rates_sp);
 			// printf("_rates_sp: %f ", (double)_rates_sp.yaw);
 
+			if(_param_hy_rr_lpf_en.get()){
+				LPFilter(rates(0), &_hy_rollr_lpf);
+				rates(0) = _hy_rollr_lpf.out;
+			}
+			if(_param_hy_yr_lpf_en.get()){
+				LPFilter(rates(2), &_hy_yawr_lpf);
+				rates(2) = _hy_yawr_lpf.out;
+			}
+
 			Vector3f body_rates_setpoint = Vector3f(_rates_sp.roll, _rates_sp.pitch, _rates_sp.yaw);
 
 			// Run attitude RATE controllers which need the desired attitudes from above, add trim.
@@ -259,6 +285,8 @@ void HydroRateControl::Run()
 				_rate_control.resetIntegral(2);
 				// printf("here9 ");
 			}
+
+			control_u(1) = control_u(1) - _param_hy_pr_tcp.get();
 
 			// PX4_INFO("control_u: %f, %f, %f", (double)control_u(0), (double)control_u(1), (double)control_u(2));
 			if (control_u.isAllFinite()) {
