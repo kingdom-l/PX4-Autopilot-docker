@@ -1825,7 +1825,7 @@ void Commander::run()
 
 		systemPowerUpdate();
 
-		landDetectorUpdate();
+		// landDetectorUpdate();
 
 		safetyButtonUpdate();
 
