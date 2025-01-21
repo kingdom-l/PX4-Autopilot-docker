@@ -178,7 +178,7 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_HIGH_P>) _param_hy_high_p,
 		(ParamFloat<px4::params::HY_HIGH_I>) _param_hy_high_i,
-		(ParamFloat<px4::params::HY_HIGH_D>) _param_hy_high_d,
+		(ParamFloat<px4::params::HY_HIGH_FF>) _param_hy_high_ff,
 		(ParamFloat<px4::params::HY_P_LIM>) _param_hy_p_lim,
 		(ParamFloat<px4::params::HY_R_LIM>) _param_hy_r_lim,
 		(ParamFloat<px4::params::HY_DEPSAT_MAX>) _param_hy_depsat_max,

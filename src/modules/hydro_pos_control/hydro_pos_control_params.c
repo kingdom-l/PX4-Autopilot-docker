@@ -41,7 +41,7 @@
 /**
  * Hydro high proportional gain.
  *
- * @unit m/s
+ * @unit
  * @min 0.0
  * @max 10
  * @decimal 3
@@ -53,7 +53,7 @@ PARAM_DEFINE_FLOAT(HY_HIGH_P, 0.08f);
 /**
  * Hydro high integrator gain.
  *
- * @unit m
+ * @unit
  * @min 0.0
  * @max 10
  * @decimal 3
@@ -63,17 +63,17 @@ PARAM_DEFINE_FLOAT(HY_HIGH_P, 0.08f);
 PARAM_DEFINE_FLOAT(HY_HIGH_I, 0.0f);
 
 /**
- * Hydro high derivative gain.
+ * Hydro high feedforward gain.
  *
  *
- * @unit m/s
- * @min 0.0
+ * @unit
+ * @min -10.0
  * @max 10
  * @decimal 3
  * @increment 0.05
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_HIGH_D, 0.0f);
+PARAM_DEFINE_FLOAT(HY_HIGH_FF, 0.0f);
 
 /**
  * Maximum pitch angle for hydro depth control output
@@ -137,10 +137,10 @@ PARAM_DEFINE_FLOAT(HY_DEPSAT_K, 1.f);
  * The depth setpoint for an altitude controlled mode.
  *
  * @unit m
- * @min 0.0
+ * @min -3.0
  * @max 3.0
  * @decimal 2
- * @increment 0.1
+ * @increment 0.01
  * @group Hydro Position Control
  */
 PARAM_DEFINE_FLOAT(HY_DEPTH_SP, 0.f);
