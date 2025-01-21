@@ -119,6 +119,17 @@ PARAM_DEFINE_FLOAT(HY_R_RMAX, 70.0f);
 PARAM_DEFINE_FLOAT(HY_Y_RMAX, 50.0f);
 
 /**
+ * Enable coordinated turn control
+ *
+ * 0 disable coordinated turn control
+ * 1 enable coordinated turn control
+ *
+ * @boolean
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_INT32(HY_Y_CTURN_EN, 1);
+
+/**
  * Maximum Airspeed (CAS) for the trim airspeed
  *
  * The maximal airspeed (calibrated airspeed) the user is able to command.
