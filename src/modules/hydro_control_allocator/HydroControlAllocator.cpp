@@ -286,6 +286,10 @@ void HydroControlAllocator::Run()
 	if(do_update){
 		_last_run = now;
 
+		// _vehicle_attitude_sub.update(&_vehicle_attitude);
+		// matrix::Eulerf euler_angles(matrix::Quatf(_vehicle_attitude.q));
+		// _alpha = euler_angles.theta();
+
 		if(_param_hy_speed_select.get() == 0)//使用替代速度
 		{
 			_Va2 = _param_hy_airspeed_trim.get() * _param_hy_airspeed_trim.get();
@@ -360,7 +364,7 @@ void HydroControlAllocator::Run()
 		optim(x_opt[1], _nf_params_hy_wl);
 
 		// printf("hy opt gamma: r:%f l:%f ", (double)(x_opt[0][0]/_param_hy_wing_ang_max.get()), (double)(x_opt[1][0]/_param_hy_wing_ang_max.get()));
-		// printf("hy opt thrust: r:%f l:%f ht:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()), (double)(x_opt[2][1]/_param_hy_thrust_max.get()));
+		// printf("hy opt thrust: r:%f l:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()));
 		// printf("hy opt thrust: r:%f l:%f ht:%f \n", (double)(x_opt[0][1]), (double)(x_opt[1][1]), (double)_hy_tail_torque);
 
 		// LPFilter(x_opt[0][0], &_lpf_hy_wr);
