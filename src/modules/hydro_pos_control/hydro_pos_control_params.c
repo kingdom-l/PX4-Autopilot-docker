@@ -43,12 +43,12 @@
  *
  * @unit
  * @min 0.0
- * @max 10
+ * @max 600
  * @decimal 3
  * @increment 0.05
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_HIGH_P, 0.08f);
+PARAM_DEFINE_FLOAT(HY_DEP_P, 0.08f);
 
 /**
  * Hydro high integrator gain.
@@ -60,20 +60,33 @@ PARAM_DEFINE_FLOAT(HY_HIGH_P, 0.08f);
  * @increment 0.05
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_HIGH_I, 0.0f);
+PARAM_DEFINE_FLOAT(HY_DEP_I, 0.0f);
 
 /**
  * Hydro high feedforward gain.
  *
  *
  * @unit
- * @min -10.0
+ * @min 0.0
  * @max 10
  * @decimal 3
  * @increment 0.05
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_HIGH_FF, 0.0f);
+PARAM_DEFINE_FLOAT(HY_DEP_FF, 0.0f);
+
+/**
+ * Max z-axis force for The depth control output.
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 15
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_LIM, 5.0f);
 
 /**
  * Maximum pitch angle for hydro depth control output
@@ -106,7 +119,7 @@ PARAM_DEFINE_FLOAT(HY_R_LIM, 30.0f);
 /**
  * Hydro depth saturate max value
  *
- * The depth saturate max value for saturate_function.
+ * The depth saturate max value for saturate_function and z-axis force.
  *
  * @unit
  * @min 0.0

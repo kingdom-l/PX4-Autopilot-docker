@@ -192,30 +192,37 @@ HydroPositionControl::Run()
 
 		float depth_sp = _param_hy_depth_sp.get(); // 遵循海平面以上为正，海平面以下为负
 
-		float depth_e = depth_sp - depth;
+		float depth_e = (depth_sp - depth) * (-1);
 		_depth_e_i = _depth_e_i + dt / 2 * (depth_e + _depth_e_pre);
 		_depth_e_pre = depth_e;
 
-		float pitch_sp_sat = math::constrain(_param_hy_high_p.get()*depth_e+_param_hy_high_i.get()*_depth_e_i+_param_hy_high_ff.get(), -radians(_param_hy_p_lim.get()), radians(_param_hy_p_lim.get()));
+		// float pitch_sp_sat = math::constrain(_param_hy_dep_p.get()*depth_e+_param_hy_dep_i.get()*_depth_e_i+_param_hy_dep_ff.get(), -radians(_param_hy_p_lim.get()), radians(_param_hy_p_lim.get()));
 
-		if(std::fabs(_param_hy_high_i.get()) > 1e-6f){
+		// if(std::fabs(_param_hy_dep_i.get()) > 1e-6f){
 
-			float pitch_sp_unsat = _param_hy_high_p.get()*depth_e+_param_hy_high_i.get()*_depth_e_i;
-			_depth_e_i = _depth_e_i + dt/(radians(_param_hy_high_i.get())) * (pitch_sp_sat - pitch_sp_unsat);
+		// 	float pitch_sp_unsat = _param_hy_dep_p.get()*depth_e+_param_hy_dep_i.get()*_depth_e_i;
+		// 	_depth_e_i = _depth_e_i + dt/(radians(_param_hy_dep_i.get())) * (pitch_sp_sat - pitch_sp_unsat);
 
-		}
+		// }
 
 		_manual_control_setpoint_sub.update(&_manual_control_setpoint);
 		vehicle_attitude_setpoint_s att_sp{};
 		att_sp.timestamp = hrt_absolute_time();
 		att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_r_lim.get()); // roll的手动控制反应很慢
-		att_sp.pitch_body = pitch_sp_sat; // rad
+		att_sp.pitch_body = 0; //pitch_sp_sat; // rad
 		att_sp.yaw_body = euler_angles.psi();
 		att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f; // 最大油门量为1
-		// att_sp.thrust_body[2] = -saturate_function(depth_e, _param_hy_depsat_max.get(), _param_hy_depsat_k.get()) / _param_hy_depsat_max.get();
+		att_sp.thrust_body[2] = math::constrain(_param_hy_dep_p.get() * depth_e + _param_hy_dep_i.get() * _depth_e_i - _param_hy_dep_ff.get(), -_param_hy_dep_lim.get(), _param_hy_dep_lim.get());
+		if(std::fabs(_param_hy_dep_i.get()) > 1e-6f){
+
+			float thrust_bodyz_unsat = _param_hy_dep_p.get()*depth_e+_param_hy_dep_i.get()*_depth_e_i - _param_hy_dep_ff.get() ;
+			_depth_e_i = _depth_e_i + dt/(radians(_param_hy_dep_i.get())) * (att_sp.thrust_body[2] - thrust_bodyz_unsat);
+
+		}
+
 		_attitude_sp_pub.publish(att_sp);
 
-		// printf("pos: %f %f %f %f %f\n", (double)depth_sp, (double)depth, (double)depth_e, (double)_depth_e_i, (double)pitch_sp_sat);
+		// printf("pos: %f %f %f %f \n", (double)depth_sp, (double)depth, (double)depth_e, (double)_depth_e_i);// (double)pitch_sp_sat);
 		// printf("thrust_sp: %f %f \n", (double)att_sp.thrust_body[0], (double)att_sp.thrust_body[2]);
 	}
 
