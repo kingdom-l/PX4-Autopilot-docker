@@ -406,7 +406,7 @@ PARAM_DEFINE_FLOAT(HY_FXR_WEIGHT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_FZR_WEIGHT, -10);
+PARAM_DEFINE_FLOAT(HY_FZR_WEIGHT, 0);
 
 /**
  * Pitch moment weight for fxl
@@ -432,4 +432,4 @@ PARAM_DEFINE_FLOAT(HY_FXL_WEIGHT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_FZL_WEIGHT, -10);
+PARAM_DEFINE_FLOAT(HY_FZL_WEIGHT, 0);

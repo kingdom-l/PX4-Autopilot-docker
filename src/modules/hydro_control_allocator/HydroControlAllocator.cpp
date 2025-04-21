@@ -334,6 +334,7 @@ void HydroControlAllocator::Run()
 		// _nf_params_hy_htail.Fz = force_sp(5);
 		_hy_tail_torque = force_sp(4);
 
+		// printf("force: %f %f, torque: %f %f %f \n", (double)_wrench_sp(0), (double)_wrench_sp(1), (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 		// printf("hy horizontal th bef: r:%f l:%f ", (double)force_sp(0), (double)force_sp(2));
 		// printf("hy vertical th bef: r:%f l:%f \n", (double)force_sp(1), (double)force_sp(3));
 
@@ -357,6 +358,9 @@ void HydroControlAllocator::Run()
 
 		// float x_opt[2][2] = {{math::constrain(atan2f(_nf_params_hy_wr.Fz, _nf_params_hy_wr.Fx) * 0.5f, -_param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()), _nf_params_hy_wr.Fx*0.5f},
 		// 	       	     {math::constrain(atan2f(_nf_params_hy_wl.Fz, _nf_params_hy_wl.Fx) * 0.5f, -_param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()), _nf_params_hy_wl.Fx*0.5f}};
+
+		// printf("hy right: %f %f ", (double)_nf_params_hy_wr.Fx, (double)_nf_params_hy_wr.Fz);
+		// printf("hy left: %f %f \n", (double)_nf_params_hy_wl.Fx, (double)_nf_params_hy_wl.Fz);
 
 		float x_opt[2][2] = {{0.f, _nf_params_hy_wr.Fx*0.5f},
 			       	     {0.f, _nf_params_hy_wl.Fx*0.5f}}; // 初值取得可能有问题，cosf单位rad
