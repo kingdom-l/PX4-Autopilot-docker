@@ -131,7 +131,7 @@ HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
 		// Always copy the new manual setpoint, even if it wasn't updated, to fill the actuators with valid values
 		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
 
-			if (!_vhycontrol_mode.flag_control_climb_rate_enabled && _vhycontrol_mode.flag_control_attitude_enabled) {
+			if (!_vhycontrol_mode.flag_control_climb_rate_enabled && _vhycontrol_mode.flag_control_attitude_enabled) { // STABILIZED mode generate the attitude setpoint from manual user inputs
 
 				_att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_man_r_max.get());
 
@@ -140,7 +140,10 @@ HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
 				_att_sp.pitch_body = constrain(_att_sp.pitch_body, -radians(_param_hy_man_p_max.get()), radians(_param_hy_man_p_max.get()));
 
 				_att_sp.yaw_body = yaw_body; // yaw is not controlled, so set setpoint to current yaw
+
 				_att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
+
+				_att_sp.thrust_body[2] = 0.f;
 				// printf("manual: %f ", (double)_att_sp.roll_body);
 
 				Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
@@ -231,11 +234,11 @@ void HydroAttitudeControl::Run()
 		}
 
 		// auto_dive_poll(euler_angles.psi());
-
 		vehicle_manual_poll(euler_angles.psi());
+		// printf("att_sp: %f %f %f %f\n", (double)_att_sp.thrust_body[2], (double)_att_sp.roll_body, (double)_att_sp.pitch_body, (double)_att_sp.yaw_body);
 
 		vehicle_attitude_setpoint_poll();
-		// printf("att_sp: %f %f %f\n", (double)_att_sp.roll_body, (double)_att_sp.pitch_body, (double)_att_sp.yaw_body);
+		// printf("after att_sp: %f %f %f %f\n", (double)_att_sp.thrust_body[2], (double)_att_sp.roll_body, (double)_att_sp.pitch_body, (double)_att_sp.yaw_body);
 
 		_vehicle_control_mode_sub.update(&_vhycontrol_mode);
 		// printf("att_control_mode: %i %i %i \n", _vhycontrol_mode.flag_control_manual_enabled, _vhycontrol_mode.flag_control_attitude_enabled,

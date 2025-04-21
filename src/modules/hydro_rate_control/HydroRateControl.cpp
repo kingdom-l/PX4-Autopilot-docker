@@ -109,13 +109,14 @@ HydroRateControl::vehicle_manual_poll()
 		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
 
 			if (_vhycontrol_mode.flag_control_rates_enabled &&
-			    !_vhycontrol_mode.flag_control_attitude_enabled) {
+			    !_vhycontrol_mode.flag_control_attitude_enabled) { // ACRO
 
 				_rates_sp.roll = _manual_control_setpoint.roll * radians(_param_hy_acro_x_max.get()); // _manual_control_setpoint.roll取值为[-1, 1]
 				_rates_sp.yaw = _manual_control_setpoint.yaw * radians(_param_hy_acro_z_max.get());
 				_rates_sp.pitch = -_manual_control_setpoint.pitch * radians(_param_hy_acro_y_max.get()); // hy_acro_y_max: Acro body pitch max rate setpoint 90
 				_rates_sp.timestamp = hrt_absolute_time();
 				_rates_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
+				_rates_sp.thrust_body[2] = 0.f;
 				// printf("here5: %f ", (double)_rates_sp.pitch);
 
 				_rate_sp_pub.publish(_rates_sp);
@@ -131,6 +132,7 @@ HydroRateControl::vehicle_manual_poll()
 
 				_hydro_thrust_setpoint.xyz[0] = math::constrain((_manual_control_setpoint.throttle + 1.f) * .5f, 0.f, 1.f);
 
+				_hydro_thrust_setpoint.xyz[2] = 0.f;
 				// printf("here6 : %f %f ", (double)_hydro_torque_setpoint.xyz[0], (double)_hydro_torque_setpoint.xyz[1]);
 			}
 		}
@@ -301,7 +303,7 @@ void HydroRateControl::Run()
 			/* throttle passed through if it is finite */
 			_hydro_thrust_setpoint.xyz[0] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ? _rates_sp.thrust_body[0] : 0.0f;
 			_hydro_thrust_setpoint.xyz[2] = PX4_ISFINITE(_rates_sp.thrust_body[2]) ? _rates_sp.thrust_body[2] : 0.0f;
-			// printf("here11 %f ", (double)_hydro_thrust_setpoint.xyz[0]); // 油门量[0, 1]
+			// printf("here11: %f, %f ", (double)_hydro_thrust_setpoint.xyz[0], (double)_hydro_thrust_setpoint.xyz[2]); // 油门量[0, 1]
 			// printf("hy_torque: %f %f %f \n", (double)_hydro_torque_setpoint.xyz[0], (double)_hydro_torque_setpoint.xyz[1], (double)_hydro_torque_setpoint.xyz[2]);
 
 			/* scale effort by battery status */
