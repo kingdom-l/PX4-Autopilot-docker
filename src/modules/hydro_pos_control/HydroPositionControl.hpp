@@ -87,6 +87,7 @@
 #include <uORB/topics/debug_value.h>
 #include <uORB/topics/debug_vect.h>
 #include <uORB/topics/depth_estimated.h>
+#include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/uORB.h>
 #include <poll.h>
 
@@ -94,7 +95,7 @@
 #include <lib/three_order_eso/three_order_eso.hpp>
 #include <lib/tracking_differentiator/tracking_differentiator.hpp>
 #include <lib/mathlib/math/filter/LowPassFilter2p.hpp>
-#include <uORB/topics/vehicle_local_position_setpoint.h>
+
 // #include <lib/Eigen/Eigen.h>
 
 using namespace time_literals;
@@ -132,17 +133,20 @@ private:
 	uORB::Subscription _depth_estimated_sub{ORB_ID(depth_estimated)}; // depth gauge
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 
-	uORB::Publication<vehicle_attitude_setpoint_s> _attitude_sp_pub;
+	uORB::Publication<vehicle_attitude_setpoint_s>	_hy_att_sp_pub{ORB_ID(hy_vehicle_attitude_setpoint)};
 	uORB::Publication<vehicle_local_position_setpoint_s> _vehicle_local_pos_sp_pub{ORB_ID(vehicle_local_position_setpoint)};
+	uORB::Publication<trajectory_setpoint_s> _hy_traj_sp_pub{ORB_ID(trajectory_setpoint)};
 	struct debug_value_s _dbg_val;
 	orb_advert_t pub_dbg_val;
+
+	struct debug_vect_s _debug_vec; // 订阅动捕测量的位置信息
 
 	struct debug_array_s _dbg_arr;
 	orb_advert_t pub_dbg_arr;
 
 	vehicle_local_position_setpoint_s _pos_sp{};
 
-	vehicle_local_position_s _local_pos{};
+	trajectory_setpoint_s _traj_sp{};
 	depth_estimated_s _depth_estimated{};
 	manual_control_setpoint_s _manual_control_setpoint{};
 
@@ -153,13 +157,18 @@ private:
 	TwoOrderEso _depth_eso{5.0f, 100, 300};
 	// ThreeOrderEso _depth_eso1{100, 300, 1000};
 	TrackingDifferentiator _pos_x_td{0.01, 100, 0.07};
+	TrackingDifferentiator _pos_y_td{0.01, 100, 0.07};
+	TrackingDifferentiator _pos_z_td{0.01, 100, 0.07};
 	math::LowPassFilter2p<float> _pos_x_lpf{800.f, 40.f};
-	float _vx_hat, _px_hat;
+	float _vx_hat = 0.f, _px_hat = 0.f, _vy_hat = 0.f, _py_hat = 0.f, _vz_hat = 0.f, _pz_hat = 0.f;
+	float _Va_hat = 0.f;
 	// Eigen::MatrixXf _mat(3, 3);
 
 	float _water_density = 1000;
+	float _depth_e = 0.f, _depth_e_i = 0.f;
 	float _depth_e_pre = 0.f;
-	float _depth_e_i = 0.f;
+	float _Va_e = 0.f, _Va_e_pre = 0.f, _Va_e_i = 0.f;
+
 
 	/**
 	 * @brief Constrains the roll angle setpoint near ground to avoid wingtip strike.
@@ -185,6 +194,19 @@ private:
 		(ParamFloat<px4::params::HY_DEPSAT_MAX>) _param_hy_depsat_max,
 		(ParamFloat<px4::params::HY_DEPSAT_K>) _param_hy_depsat_k,
 		(ParamFloat<px4::params::HY_DEPTH_SP>) _param_hy_depth_sp,
+		(ParamFloat<px4::params::HY_VELFB_P>) _param_hy_velfb_p,
+		(ParamFloat<px4::params::HY_VA_P>) _param_hy_va_p,
+		(ParamFloat<px4::params::HY_VA_I>) _param_hy_va_i,
+		(ParamFloat<px4::params::HY_VA_FF>) _param_hy_va_ff,
+		(ParamFloat<px4::params::HY_VA_LIM>) _param_hy_va_lim,
+		(ParamFloat<px4::params::HY_VA_SP>) _param_hy_va_sp,
+		(ParamFloat<px4::params::HY_VE_RES>) _param_hy_ve_res,
+		(ParamFloat<px4::params::HY_VE_A>) _param_hy_ve_a,
+		(ParamFloat<px4::params::HY_VE_B>) _param_hy_ve_b,
+		(ParamFloat<px4::params::HY_VE_ILIMIT>) _param_hy_ve_ilimit,
+		(ParamFloat<px4::params::HY_DE_A>) _param_hy_de_a,
+		(ParamFloat<px4::params::HY_DE_B>) _param_hy_de_b,
+		(ParamFloat<px4::params::HY_DE_ILIMIT>) _param_hy_de_ilimit,
 		(ParamFloat<px4::params::HY_POS_TD_H>) _param_hy_pos_td_h,
 		(ParamFloat<px4::params::HY_POS_TD_R0>) _param_hy_pos_td_r0,
 		(ParamFloat<px4::params::HY_POS_TD_H0>) _param_hy_pos_td_h0,

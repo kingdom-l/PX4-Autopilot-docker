@@ -76,7 +76,7 @@ PARAM_DEFINE_FLOAT(HY_DEP_I, 0.0f);
 PARAM_DEFINE_FLOAT(HY_DEP_FF, 0.0f);
 
 /**
- * Max z-axis force for The depth control output.
+ * Max z-axis force for the depth control output.
  *
  *
  * @unit
@@ -159,6 +159,171 @@ PARAM_DEFINE_FLOAT(HY_DEPSAT_K, 1.f);
 PARAM_DEFINE_FLOAT(HY_DEPTH_SP, 0.f);
 
 /**
+ * Hydro velocity feedback for depth control
+ *
+ *
+ * @unit m
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VELFB_P, 0.f);
+
+/**
+ * Hydro vel proportional gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 0.5
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_P, 0.08f);
+
+/**
+ * Hydro vel integrator gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_I, 0.0f);
+
+/**
+ * Hydro vel forward feedback gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_FF, 0.153f);
+
+/**
+ * Max x-axis force for the vel control output.
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 1
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_LIM, 1.0f);
+
+/**
+ * Hydro Va setpoint
+ *
+ * The Va setpoint for an velocity controlled mode.
+ *
+ * @unit m
+ * @min 0.0
+ * @max 3.0
+ * @decimal 1
+ * @increment 0.1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_SP, 1.5f);
+
+/**
+ * Hydro vel controller resolution
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 200.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VE_RES, 20.0f);
+
+/**
+ * Hydro vel error a
+ *
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VE_A, 0.01f);
+
+/**
+ * Hydro vel error b
+ *
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VE_B, 0.03f);
+
+/**
+ * Hydro vel integretor output limit
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VE_ILIMIT, 0.3f);
+
+/**
+ * Hydro depth error a
+ *
+ *
+ * @unit m
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DE_A, 0.02f);
+
+/**
+ * Hydro depth error b
+ *
+ *
+ * @unit m
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DE_B, 0.02f);
+
+/**
+ * Hydro depth integretor output limit
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DE_ILIMIT, 0.3f);
+
+/**
  * Hydro position tracking differentiator params h
  *
  *
@@ -182,7 +347,7 @@ PARAM_DEFINE_FLOAT(HY_POS_TD_H, 0.01f);
  * @increment 0.1
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_POS_TD_R0, 100.f);
+PARAM_DEFINE_FLOAT(HY_POS_TD_R0, 70.f);
 
 /**
  * Hydro position tracking differentiator params h0
@@ -191,11 +356,11 @@ PARAM_DEFINE_FLOAT(HY_POS_TD_R0, 100.f);
  * @unit
  * @min 0.0
  * @max 1.0
- * @decimal 2
+ * @decimal 3
  * @increment 0.01
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_POS_TD_H0, 0.07f);
+PARAM_DEFINE_FLOAT(HY_POS_TD_H0, 0.01f);
 
 /**
  * Hydro depth eso params beta1
