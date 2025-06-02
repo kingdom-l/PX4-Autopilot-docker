@@ -157,10 +157,10 @@ SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
 {
 	SquareMatrix<float, 2> J;
 	if(p.with_thrust){
-		float gamma = x_opt(0);
+		float gamma = x_opt(0);  // rad
 		float T = x_opt(1);
 
-		J(0, 0) = T * sinf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
+		J(0, 0) = T * sinf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * p.Cl * sinf(_alpha)  + 0.5f * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
 		J(0, 1) = -cosf(gamma) / _rho;
 		J(1, 0) = T * cosf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * p.Cl * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
 		J(1, 1) = sinf(gamma) / _rho;
@@ -177,7 +177,7 @@ SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
 
 Vector2f HydroControlAllocator::func(Vector2f x_opt, NfParams p)
 {
-	float gamma = x_opt(0);
+	float gamma = x_opt(0); // * (float)(M_PI) / 180.f; // rad
 	float T = x_opt(1);
 	Vector2f out;
 	out(0) = p.Fx / _rho - T * cosf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sinf(_alpha) + 0.5f * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cosf(_alpha);
@@ -190,6 +190,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 	Vector2f x(x_opt);
 	Vector2f func_out;
 	SquareMatrix<float, 2> J;
+	float wing_ang_max = _param_hy_wing_ang_max.get(); // rad
 
 	if(p.with_thrust){
 
@@ -209,9 +210,14 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 
 			x_new = x + delta_x;
 
-			x_new(0) = math::constrain(x_new(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()); // rad
-			float x1_max = math::constrain(_param_hy_th_max_gain.get()*(_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
-			x_new(1) = math::constrain(x_new(1), 0.f, x1_max);
+			x_new(0) = math::constrain(x_new(0), - wing_ang_max, wing_ang_max); // rad
+
+			if(fabsf(_manual_control_setpoint.throttle + 1.0f) < 0.1f){
+				float x1_max = math::constrain(_param_hy_th_max_gain.get()*(_manual_control_setpoint.throttle+1)*0.5f, 0.f, 1.f) * _param_hy_thrust_max.get();
+				x_new(1) = math::constrain(x_new(1), 0.f, x1_max);
+			}else{
+				x_new(1) = math::constrain(x_new(1), 0.f, _param_hy_thrust_max.get());
+			}
 
 			x = x_new;
 		}
@@ -230,7 +236,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 
 			x(0) = x(0) + delta_x;
 
-			x(0) = math::constrain(x(0), - _param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()); // rad
+			x(0) = math::constrain(x(0), - wing_ang_max, wing_ang_max); // deg
 			// printf("func_out: %f %f %f \n", (double)J(1,0), (double)func_out(0), (double)func_out(1));
 		}
 	}
@@ -281,7 +287,7 @@ void HydroControlAllocator::Run()
 			_timestamp_sample = hydro_thrust_setpoint.timestamp_sample;
 		}
 	}
-	// printf(" %f %f %f \n", (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
+	// printf("_wrench_sp: %f %f %f %f %f \n", (double)_wrench_sp(0), (double)_wrench_sp(1), (double)_wrench_sp(2), (double)_wrench_sp(3), (double)_wrench_sp(4));
 
 	if(do_update){
 		_last_run = now;
@@ -356,8 +362,10 @@ void HydroControlAllocator::Run()
 			_nf_params_hy_wl.Fx = 0.f;
 		}
 
-		// float x_opt[2][2] = {{math::constrain(atan2f(_nf_params_hy_wr.Fz, _nf_params_hy_wr.Fx) * 0.5f, -_param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()), _nf_params_hy_wr.Fx*0.5f},
-		// 	       	     {math::constrain(atan2f(_nf_params_hy_wl.Fz, _nf_params_hy_wl.Fx) * 0.5f, -_param_hy_wing_ang_max.get(), _param_hy_wing_ang_max.get()), _nf_params_hy_wl.Fx*0.5f}};
+		float wing_ang_max = _param_hy_wing_ang_max.get(); // rad
+
+		// float x_opt[2][2] = {{math::constrain(atan2f(-_nf_params_hy_wr.Fz, _nf_params_hy_wr.Fx) * 0.5f, -wing_ang_max, wing_ang_max), math::constrain(sqrtf(_nf_params_hy_wr.Fx*_nf_params_hy_wr.Fx+_nf_params_hy_wr.Fz*_nf_params_hy_wr.Fz), 0.f, _param_hy_thrust_max.get())},
+		// 	       	     {math::constrain(atan2f(-_nf_params_hy_wl.Fz, _nf_params_hy_wl.Fx) * 0.5f, -wing_ang_max, wing_ang_max), math::constrain(sqrtf(_nf_params_hy_wl.Fx*_nf_params_hy_wl.Fx+_nf_params_hy_wl.Fz*_nf_params_hy_wl.Fz), 0.f, _param_hy_thrust_max.get())}};
 
 		// printf("hy right: %f %f ", (double)_nf_params_hy_wr.Fx, (double)_nf_params_hy_wr.Fz);
 		// printf("hy left: %f %f \n", (double)_nf_params_hy_wl.Fx, (double)_nf_params_hy_wl.Fz);
@@ -367,7 +375,7 @@ void HydroControlAllocator::Run()
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
 
-		// printf("hy opt gamma: r:%f l:%f ", (double)(x_opt[0][0]/_param_hy_wing_ang_max.get()), (double)(x_opt[1][0]/_param_hy_wing_ang_max.get()));
+		// printf("hy opt gamma: r:%f l:%f ", (double)(x_opt[0][0]/wing_ang_max), (double)(x_opt[1][0]/wing_ang_max));
 		// printf("hy opt thrust: r:%f l:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()));
 		// printf("hy opt thrust: r:%f l:%f ht:%f \n", (double)(x_opt[0][1]), (double)(x_opt[1][1]), (double)_hy_tail_torque);
 
@@ -394,8 +402,8 @@ void HydroControlAllocator::Run()
 		hydro_motors_msg.control[_param_hy_lmotor_idx.get() - 1] = math::constrain(x_opt[1][1]/_param_hy_thrust_max.get(), 0.f, 1.f); // 左水翼电机
 
 		// 右水翼舵机，rad转为无量纲
-		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
-		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = math::constrain(x_opt[1][0] /_param_hy_wing_ang_max.get(), -1.f, 1.f);
+		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] / wing_ang_max, -1.f, 1.f);
+		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = math::constrain(x_opt[1][0] / wing_ang_max, -1.f, 1.f);
 		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(_hy_tail_torque, -1.f, 1.f); // /_param_hy_wing_ang_max.get()
 
 		_hydro_motors_pub.publish(hydro_motors_msg);

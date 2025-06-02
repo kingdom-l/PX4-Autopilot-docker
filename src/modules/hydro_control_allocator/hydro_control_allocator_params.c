@@ -237,7 +237,7 @@ PARAM_DEFINE_FLOAT(HY_HTAIL_AREA, 0.02);
  *
  *
  * @unit rad
- * @min -0.7
+ * @min 0.0
  * @max 0.7
  * @decimal 2
  * @increment 0.1
@@ -311,7 +311,7 @@ PARAM_DEFINE_INT32(HY_L_SV_IDX, 5);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_ST_INFO_X2, 0.03);
+PARAM_DEFINE_FLOAT(HY_ST_INFO_X2, 0.0);
 
 /**
  * Structure info

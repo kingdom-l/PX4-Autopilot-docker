@@ -97,16 +97,16 @@ private:
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-	uORB::Subscription _att_sp_sub{ORB_ID(vehicle_attitude_setpoint)};			/**< vehicle attitude setpoint */
+	uORB::Subscription _hy_att_sp_sub{ORB_ID(hy_vehicle_attitude_setpoint)};			/**< vehicle attitude setpoint */
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};				/**< vehicle status subscription */
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};	/**< notification of manual control updates */
 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};			/**< vehicle status subscription */
 
-	uORB::Publication<vehicle_rates_setpoint_s>	_rate_sp_pub{ORB_ID(vehicle_rates_setpoint)};
-	uORB::Publication<vehicle_attitude_setpoint_s>	_attitude_sp_pub{ORB_ID(vehicle_attitude_setpoint)}; // RC output
+	uORB::Publication<vehicle_rates_setpoint_s>	_hy_rates_sp_pub{ORB_ID(hy_vehicle_rates_setpoint)};
+	uORB::Publication<vehicle_attitude_setpoint_s>	_hy_att_sp_pub{ORB_ID(hy_vehicle_attitude_setpoint)}; // RC output
 
-	vehicle_attitude_setpoint_s		_att_sp{};
-	vehicle_rates_setpoint_s		_rates_sp{};
+	vehicle_attitude_setpoint_s		_hy_att_sp{};
+	vehicle_rates_setpoint_s		_hy_rates_sp{};
 	vehicle_status_s			_vehicle_status{};
 	manual_control_setpoint_s		_manual_control_setpoint{};
 	vehicle_control_mode_s			_vhycontrol_mode{};

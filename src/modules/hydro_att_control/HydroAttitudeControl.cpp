@@ -83,45 +83,45 @@ HydroAttitudeControl::parameters_update()
 	_dive_up_total_time = _dive_cru_total_time + (hrt_abstime)(1000000.0f * _param_dive_up_sec.get());
 }
 
-void
-HydroAttitudeControl::auto_dive_poll(const float yaw_body)
-{
-	if (_vehicle_status.nav_state == HYDRO_MODE_ALTCTL) {
+// void
+// HydroAttitudeControl::auto_dive_poll(const float yaw_body)
+// {
+// 	if (_vehicle_status.nav_state == HYDRO_MODE_ALTCTL) {
 
-		_att_sp.roll_body = 0;
-		_att_sp.yaw_body = yaw_body;
+// 		_hy_att_sp.roll_body = 0;
+// 		_hy_att_sp.yaw_body = yaw_body;
 
-		if(hrt_absolute_time() - _auto_dive_start_time < _dive_dn_total_time)
-		{
-			_att_sp.pitch_body = radians(_param_dive_dn_deg.get());
-			_att_sp.thrust_body[0] = _param_dive_dn_thr.get();
-		}
-		else if(hrt_absolute_time() - _auto_dive_start_time < _dive_cru_total_time)
-		{
-			_att_sp.pitch_body = radians(_param_dive_cru_deg.get());
-			_att_sp.thrust_body[0] = _param_dive_cru_thr.get();
-		}
-		else if(hrt_absolute_time() - _auto_dive_start_time < _dive_up_total_time)
-		{
-			_att_sp.pitch_body = radians(_param_dive_up_deg.get());
-			_att_sp.thrust_body[0] = _param_dive_up_thr.get();
-		}
-		else
-		{
-			_att_sp.pitch_body = radians(0);
-			_att_sp.thrust_body[0] = 0;
-		}
+// 		if(hrt_absolute_time() - _auto_dive_start_time < _dive_dn_total_time)
+// 		{
+// 			_hy_att_sp.pitch_body = radians(_param_dive_dn_deg.get());
+// 			_hy_att_sp.thrust_body[0] = _param_dive_dn_thr.get();
+// 		}
+// 		else if(hrt_absolute_time() - _auto_dive_start_time < _dive_cru_total_time)
+// 		{
+// 			_hy_att_sp.pitch_body = radians(_param_dive_cru_deg.get());
+// 			_hy_att_sp.thrust_body[0] = _param_dive_cru_thr.get();
+// 		}
+// 		else if(hrt_absolute_time() - _auto_dive_start_time < _dive_up_total_time)
+// 		{
+// 			_hy_att_sp.pitch_body = radians(_param_dive_up_deg.get());
+// 			_hy_att_sp.thrust_body[0] = _param_dive_up_thr.get();
+// 		}
+// 		else
+// 		{
+// 			_hy_att_sp.pitch_body = radians(0);
+// 			_hy_att_sp.thrust_body[0] = 0;
+// 		}
 
-		Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
-		q.copyTo(_att_sp.q_d);
+// 		Quatf q(Eulerf(_hy_att_sp.roll_body, _hy_att_sp.pitch_body, _hy_att_sp.yaw_body));
+// 		q.copyTo(_hy_att_sp.q_d);
 
-		_att_sp.reset_integral = false;
+// 		_hy_att_sp.reset_integral = false;
 
-		_att_sp.timestamp = hrt_absolute_time();
+// 		_hy_att_sp.timestamp = hrt_absolute_time();
 
-		_attitude_sp_pub.publish(_att_sp);
-	}
-}
+// 		_hy_att_sp_pub.publish(_hy_att_sp);
+// 	}
+// }
 
 void
 HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
@@ -133,27 +133,27 @@ HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
 
 			if (!_vhycontrol_mode.flag_control_climb_rate_enabled && _vhycontrol_mode.flag_control_attitude_enabled) { // STABILIZED mode generate the attitude setpoint from manual user inputs
 
-				_att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_man_r_max.get());
+				_hy_att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_man_r_max.get());
 
-				_att_sp.pitch_body = -_manual_control_setpoint.pitch * radians(_param_hy_man_p_max.get())
+				_hy_att_sp.pitch_body = -_manual_control_setpoint.pitch * radians(_param_hy_man_p_max.get())
 							+ radians(_param_hy_psp_off.get());
-				_att_sp.pitch_body = constrain(_att_sp.pitch_body, -radians(_param_hy_man_p_max.get()), radians(_param_hy_man_p_max.get()));
+				_hy_att_sp.pitch_body = constrain(_hy_att_sp.pitch_body, -radians(_param_hy_man_p_max.get()), radians(_param_hy_man_p_max.get()));
 
-				_att_sp.yaw_body = yaw_body; // yaw is not controlled, so set setpoint to current yaw
+				_hy_att_sp.yaw_body = yaw_body; // yaw is not controlled, so set setpoint to current yaw
 
-				_att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
+				_hy_att_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
 
-				_att_sp.thrust_body[2] = 0.f;
-				// printf("manual: %f ", (double)_att_sp.roll_body);
+				_hy_att_sp.thrust_body[2] = 0.f;
+				// printf("att manual \n");
 
-				Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
-				q.copyTo(_att_sp.q_d);
+				Quatf q(Eulerf(_hy_att_sp.roll_body, _hy_att_sp.pitch_body, _hy_att_sp.yaw_body));
+				q.copyTo(_hy_att_sp.q_d);
 
-				_att_sp.reset_integral = false;
+				_hy_att_sp.reset_integral = false;
 
-				_att_sp.timestamp = hrt_absolute_time();
+				_hy_att_sp.timestamp = hrt_absolute_time();
 
-				_attitude_sp_pub.publish(_att_sp);
+				_hy_att_sp_pub.publish(_hy_att_sp);
 			}
 		}
 	}
@@ -162,11 +162,13 @@ HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
 void
 HydroAttitudeControl::vehicle_attitude_setpoint_poll()
 {
-	if (_att_sp_sub.update(&_att_sp)) {
-		_rates_sp.thrust_body[0] = _att_sp.thrust_body[0];
-		_rates_sp.thrust_body[1] = _att_sp.thrust_body[1];
-		_rates_sp.thrust_body[2] = _att_sp.thrust_body[2];
+	if (_hy_att_sp_sub.update(&_hy_att_sp)) {
+		_hy_rates_sp.thrust_body[0] = _hy_att_sp.thrust_body[0];
+		_hy_rates_sp.thrust_body[1] = _hy_att_sp.thrust_body[1];
+		_hy_rates_sp.thrust_body[2] = _hy_att_sp.thrust_body[2];
+		// printf("att hello in %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2]);
 	}
+	// printf("att hello out %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2]);
 }
 
 float HydroAttitudeControl::get_airspeed_constrained()
@@ -233,65 +235,68 @@ void HydroAttitudeControl::Run()
 			_auto_dive_start_time = hrt_absolute_time();
 		}
 
-		// auto_dive_poll(euler_angles.psi());
 		vehicle_manual_poll(euler_angles.psi());
-		// printf("att_sp: %f %f %f %f\n", (double)_att_sp.thrust_body[2], (double)_att_sp.roll_body, (double)_att_sp.pitch_body, (double)_att_sp.yaw_body);
+		// printf("att aft manu_poll: %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2]);
 
 		vehicle_attitude_setpoint_poll();
-		// printf("after att_sp: %f %f %f %f\n", (double)_att_sp.thrust_body[2], (double)_att_sp.roll_body, (double)_att_sp.pitch_body, (double)_att_sp.yaw_body);
+		// printf("after att_sp: %f %f %f %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2], (double)_hy_att_sp.roll_body, (double)_hy_att_sp.pitch_body, (double)_hy_att_sp.yaw_body);
 
 		_vehicle_control_mode_sub.update(&_vhycontrol_mode);
 		// printf("att_control_mode: %i %i %i \n", _vhycontrol_mode.flag_control_manual_enabled, _vhycontrol_mode.flag_control_attitude_enabled,
 		// 				_vhycontrol_mode.flag_control_rates_enabled);
 
 		if(_vhycontrol_mode.flag_control_rates_enabled){
-			if (_att_sp.reset_integral) {
-				_rates_sp.reset_integral = true;
+			if (_hy_att_sp.reset_integral) {
+				_hy_rates_sp.reset_integral = true;
 			} else {
-				_rates_sp.reset_integral = false;
+				_hy_rates_sp.reset_integral = false;
 			}
-		}
 
-		if (_vhycontrol_mode.flag_control_attitude_enabled) {
 
-			/* Run attitude controllers */
+			if (_vhycontrol_mode.flag_control_attitude_enabled) { // STAB/ALTCTL
 
-			if (PX4_ISFINITE(_att_sp.roll_body) && PX4_ISFINITE(_att_sp.pitch_body)) {
-				_roll_ctrl.control_roll(_att_sp.roll_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
-							euler_angles.theta());
-				_pitch_ctrl.control_pitch(_att_sp.pitch_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
+				/* Run attitude controllers */
+				// printf("att control\n");
+
+				if (PX4_ISFINITE(_hy_att_sp.roll_body) && PX4_ISFINITE(_hy_att_sp.pitch_body)) {
+					_roll_ctrl.control_roll(_hy_att_sp.roll_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
 								euler_angles.theta());
-				_yaw_ctrl.control_yaw(_att_sp.roll_body, _pitch_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
-							euler_angles.theta(), get_airspeed_constrained());
+					_pitch_ctrl.control_pitch(_hy_att_sp.pitch_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
+									euler_angles.theta());
+					_yaw_ctrl.control_yaw(_hy_att_sp.roll_body, _pitch_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
+								euler_angles.theta(), get_airspeed_constrained());
 
-				/* Update input data for rate controllers */
-				Vector3f body_rates_setpoint = Vector3f(_roll_ctrl.get_body_rate_setpoint(), _pitch_ctrl.get_body_rate_setpoint(),
-									_yaw_ctrl.get_body_rate_setpoint());
+					/* Update input data for rate controllers */
+					Vector3f body_rates_setpoint = Vector3f(_roll_ctrl.get_body_rate_setpoint(), _pitch_ctrl.get_body_rate_setpoint(),
+										_yaw_ctrl.get_body_rate_setpoint());
+					// printf("att rate_pitch_sp: %f \n", (double)_hy_rates_sp.pitch);
 
-				/* add yaw rate setpoint from sticks */
-				if (_vhycontrol_mode.flag_control_manual_enabled)
-				{
-					body_rates_setpoint(2) += math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
-										  -radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
+					/* add yaw rate setpoint from sticks */
+					if (_vhycontrol_mode.flag_control_manual_enabled)
+					{
+						body_rates_setpoint(2) += math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
+											-radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
+					}
+
+					/* Publish the rate setpoint for analysis once available */
+					_hy_rates_sp.roll = body_rates_setpoint(0);
+					_hy_rates_sp.pitch = body_rates_setpoint(1);
+					if(_param_hy_y_ctrun_en.get()){
+						_hy_rates_sp.yaw = body_rates_setpoint(2);
+					}else{
+						_hy_rates_sp.yaw = math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
+											-radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
+					}
+					// printf("att th_sp: %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2]);
+					// printf("att rate_sp: %f %f %f %f\n", (double)_hy_rates_sp.thrust_body[0], (double)_hy_rates_sp.thrust_body[2], (double)_hy_rates_sp.pitch, (double)_hy_rates_sp.yaw);
+
+					_hy_rates_sp.timestamp = hrt_absolute_time();
+
+					_hy_rates_sp_pub.publish(_hy_rates_sp);
 				}
 
-				/* Publish the rate setpoint for analysis once available */
-				_rates_sp.roll = body_rates_setpoint(0);
-				_rates_sp.pitch = body_rates_setpoint(1);
-				if(_param_hy_y_ctrun_en.get()){
-					_rates_sp.yaw = body_rates_setpoint(2);
-				}else{
-					_rates_sp.yaw = math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
-										  -radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
-				}
-				// printf("rate_sp: %f %f %f\n", (double)_rates_sp.roll, (double)_rates_sp.pitch, (double)_rates_sp.yaw);
-
-				_rates_sp.timestamp = hrt_absolute_time();
-
-				_rate_sp_pub.publish(_rates_sp);
 			}
-
-		} else {
+		}else { // MANUAL
 
 		}
 		_last_nav_state = _vehicle_status.nav_state;

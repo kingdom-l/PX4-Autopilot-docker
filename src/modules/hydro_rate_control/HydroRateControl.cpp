@@ -117,11 +117,11 @@ HydroRateControl::vehicle_manual_poll()
 				_rates_sp.timestamp = hrt_absolute_time();
 				_rates_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
 				_rates_sp.thrust_body[2] = 0.f;
-				// printf("here5: %f ", (double)_rates_sp.pitch);
+				// printf("rate_manual acro: %f %f\n", (double)_rates_sp.thrust_body[0], (double)_rates_sp.thrust_body[2]);
 
 				_rate_sp_pub.publish(_rates_sp);
 
-			} else { // _vehicle_status.nav_state == HYDRO_MODE_MANUAL
+			} else { // _vehicle_status.nav_state == HYDRO_MODE_MANUAL/ HYDRO_MODE_ALTCTL / STABLIZED
 
 				_hydro_torque_setpoint.xyz[0] = math::constrain(_manual_control_setpoint.roll * _param_hy_man_r_sc.get() +
 								  _param_trim_roll.get(), -1.f, 1.f);
@@ -219,7 +219,7 @@ void HydroRateControl::Run()
 
 		vehicle_manual_poll();
 
-		if (_vhycontrol_mode.flag_control_rates_enabled) {
+		if (_vhycontrol_mode.flag_control_rates_enabled) { // STAB/ACRO/ALT
 
 			// printf("here7 ");
 
@@ -256,8 +256,8 @@ void HydroRateControl::Run()
 				// printf("here8 ");
 			}
 
-			_rates_sp_sub.update(&_rates_sp);
-			// printf("_rates_sp: %f ", (double)_rates_sp.yaw);
+			_hy_rates_sp_sub.update(&_rates_sp);
+			// printf("rt _rates_sp: %f, %f\n", (double)_rates_sp.thrust_body[0], (double)_rates_sp.thrust_body[2]);
 
 			if(_param_hy_rr_lpf_en.get()){
 				LPFilter(rates(0), &_hy_rollr_lpf);
@@ -303,7 +303,7 @@ void HydroRateControl::Run()
 			/* throttle passed through if it is finite */
 			_hydro_thrust_setpoint.xyz[0] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ? _rates_sp.thrust_body[0] : 0.0f;
 			_hydro_thrust_setpoint.xyz[2] = PX4_ISFINITE(_rates_sp.thrust_body[2]) ? _rates_sp.thrust_body[2] : 0.0f;
-			// printf("here11: %f, %f ", (double)_hydro_thrust_setpoint.xyz[0], (double)_hydro_thrust_setpoint.xyz[2]); // 油门量[0, 1]
+			// printf("rt here11: %f, %f\n", (double)_hydro_thrust_setpoint.xyz[0], (double)_hydro_thrust_setpoint.xyz[2]); // 油门量[0, 1]
 			// printf("hy_torque: %f %f %f \n", (double)_hydro_torque_setpoint.xyz[0], (double)_hydro_torque_setpoint.xyz[1], (double)_hydro_torque_setpoint.xyz[2]);
 
 			/* scale effort by battery status */
@@ -320,7 +320,7 @@ void HydroRateControl::Run()
 				_hydro_thrust_setpoint.xyz[0] *= _battery_scale;
 			}
 
-		} else {
+		} else { // MANUAL
 			_rate_control.resetIntegral();
 		}
 
