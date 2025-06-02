@@ -50,6 +50,7 @@ void TrackingDifferentiator::update(float input)
 	float x2k = _x2_pre + _h * fhan(_x1_pre - input, _x2_pre, _r0, _h0);
 	_x1_pre = x1k;
 	_x2_pre = x2k;
+	// printf("td: %f %f\n", (double)_x1_pre, (double)_x2_pre);
 
 }
 

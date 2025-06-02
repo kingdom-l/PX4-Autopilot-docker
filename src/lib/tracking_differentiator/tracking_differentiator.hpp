@@ -71,10 +71,10 @@ private:
 	float fhan(float x1, float x2, float r0, float h0);
 	float fsg(float x, float d);
 
-	float _x1_pre;
-	float _x2_pre;
-	float _h;
-	float _r0;
-	float _h0;
+	float _x1_pre = 0.f;
+	float _x2_pre = 0.f;
+	float _h = 0.f;
+	float _r0 = 0.f;
+	float _h0 = 0.f;
 
 };
