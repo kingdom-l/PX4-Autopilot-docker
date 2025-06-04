@@ -103,6 +103,16 @@ using namespace time_literals;
 using matrix::Vector2d;
 using matrix::Vector2f;
 
+typedef struct
+{
+    float vel;           // 速度
+    float pos[100];      // 当前位置
+
+    // 用于计算dt，从而计算速度
+    uint8_t init_flag; // 标记是否初始化
+    float dt[100];
+} time_derivative_t;
+
 class HydroPositionControl final : public ModuleBase<HydroPositionControl>, public ModuleParams,
 	public px4::WorkItem
 {
@@ -120,6 +130,8 @@ public:
 	static int print_usage(const char *reason = nullptr);
 
 	bool init();
+
+	uint8_t TimeDerivativeCalc(uint8_t times, time_derivative_t *ins, float position);
 
 
 private:
@@ -169,7 +181,8 @@ private:
 	float _depth_e_pre = 0.f;
 	float _Va_e = 0.f, _Va_e_pre = 0.f, _Va_e_i = 0.f;
 
-
+	hrt_abstime _last_time = 0, _time_now = 0;
+	time_derivative_t _posx_derivate = {0}, _posy_derivate = {0}, _posz_derivate = {0};
 	/**
 	 * @brief Constrains the roll angle setpoint near ground to avoid wingtip strike.
 	 *
