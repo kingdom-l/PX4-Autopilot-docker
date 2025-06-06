@@ -99,34 +99,32 @@ float HydroPositionControl::saturate_function(float x, float max_value, float k,
  */
 uint8_t HydroPositionControl::TimeDerivativeCalc(uint8_t times, time_derivative_t *ins, float position)
 {
-	static uint32_t index = 0;
-	static float temp_res = 0, temp_time_sum = 0, temp_res_sub[50] = {0}; // 便于计算的中间量
 	if (ins->init_flag == 0)
 	{
-		_last_time = hrt_absolute_time();
+		ins->last_time = hrt_absolute_time();
 		ins->init_flag = 1;
-		ins->pos[index++] = position;
+		ins->pos[ins->index++] = position;
 		return 0;
 	}
 	_time_now = hrt_absolute_time();
-	ins->dt[(index - 1) % times] = (_time_now - _last_time) * 1e-6f;
-	_last_time = _time_now;
-	ins->pos[index % times] = position;
-	temp_time_sum += ins->dt[(index - 1) % times];
-	if (index >= times / 2) // 已经超过一半的次数了，可以开始计算了
+	ins->dt[(ins->index - 1) % times] = (_time_now - ins->last_time) * 1e-6f;
+	ins->last_time = _time_now;
+	ins->pos[ins->index % times] = position;
+	ins->temp_time_sum += ins->dt[(ins->index - 1) % times];
+	if (ins->index >= times / 2) // 已经超过一半的次数了，可以开始计算了
 	{
-		temp_res_sub[index % (times / 2)] = ((ins->pos[index % times] - ins->pos[(index - times / 2) % times]) / temp_time_sum);
-		temp_res += temp_res_sub[index % (times / 2)];
-		temp_time_sum -= ins->dt[(index - times / 2) % times];
-		if ((index + 1) >= times) // 如果已经达到了给定的次数，可以计算加速度
+		ins->temp_res_sub[ins->index % (times / 2)] = ((ins->pos[ins->index % times] - ins->pos[(ins->index - times / 2) % times]) / ins->temp_time_sum);
+		ins->temp_res += ins->temp_res_sub[ins->index % (times / 2)];
+		ins->temp_time_sum -= ins->dt[(ins->index - times / 2) % times];
+		if ((ins->index + 1) >= times) // 如果已经达到了给定的次数，可以计算加速度
 		{
-		ins->vel = temp_res / ((times / 2) * 1.0f);
-		temp_res -= temp_res_sub[(index + 1) % (times / 2)];
-		index++;
+		ins->vel = ins->temp_res / ((times / 2) * 1.0f);
+		ins->temp_res -= ins->temp_res_sub[(ins->index + 1) % (times / 2)];
+		ins->index++;
 		return 1;
 		}
 	}
-	index++;
+	ins->index++;
 	return 0;
 }
 
@@ -208,11 +206,12 @@ HydroPositionControl::Run()
 		// orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
 		// ****** 测试低通滤波器 ******
 
-		// ****** 测试时间求导 ******
-		// TimeDerivativeCalc(25, &_posx_derivate, (double)_debug_vec.x);
-		// TimeDerivativeCalc(25, &_posy_derivate, (double)_debug_vec.y);
-		// TimeDerivativeCalc(25, &_posz_derivate, (double)_debug_vec.z);
-		// ****** 测试时间求导 ******
+		// ****** 测试位置对时间求导 ******
+		TimeDerivativeCalc(25, &_posx_derivate, (double)_debug_vec.x);
+		TimeDerivativeCalc(25, &_posy_derivate, (double)_debug_vec.y);
+		TimeDerivativeCalc(25, &_posz_derivate, (double)_debug_vec.z);
+		// printf("ad %p %p %p\n", &_posx_derivate, &_posy_derivate, &_posz_derivate);
+		// ****** 测试位置对时间求导 ******
 
 		// ****** 测试TD ******
 		// 使用TD估计速度，并发布debug_value消息，在mavlink inspector显示
@@ -248,20 +247,6 @@ HydroPositionControl::Run()
 		// orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
 		// ****** debug_array无法分开显示data数据内容(舍弃) ******
 
-		// ****** 显示TD估计结果 ******
-		_pos_sp.timestamp = hrt_absolute_time();
-		_pos_sp.x = _debug_vec.x;
-		_pos_sp.y = _debug_vec.y;
-		_pos_sp.z = _debug_vec.z;
-		_pos_sp.vx = _px_hat;
-		_pos_sp.vy = _py_hat;
-		_pos_sp.vz = _pz_hat;
-		_pos_sp.acceleration[0] = _vx_hat;
-		// _pos_sp.acceleration[1] = _vy_hat; // 判断一下TD的滤波输出如何
-		_pos_sp.acceleration[1] = _posz_derivate.vel; // 判断一下TD的滤波输出如何
-		_pos_sp.acceleration[2] = _vz_hat; // 判断一下TD的速度估计如何
-		_vehicle_local_pos_sp_pub.publish(_pos_sp);
-		// ****** 显示TD估计结果 ******
 		// ****** 测试TD ******
 
 		// ****** 速度控制 ******
@@ -305,7 +290,7 @@ HydroPositionControl::Run()
 		// }
 		// printf("pos: %f %f %f\n", (double)_px_hat, (double)_py_hat, (double)_pz_hat);
 		// printf("h vel: %f %f %f %f %f %f\n", (double)_vx_hat, (double)_vy_hat, (double)_vz_hat, (double)_Va_hat, (double)_Va_e, (double)_Va_e_i);
-		printf("h vel sp:%f %f e:%f e_i:%f fx_sp:%f\n", (double)Va_sp, (double)_Va_hat, (double)_Va_e, (double)_Va_e_i, (double)fx_sp);
+
 		// ****** 速度控制 ******
 
 
@@ -407,10 +392,27 @@ HydroPositionControl::Run()
 		// _pos_sp.yaw = fz_sp;
 		// _vehicle_local_pos_sp_pub.publish(_pos_sp);
 		// ****** 发布速度和深度曲线 ******
+
+		// ****** 显示TD估计结果 ******
+		_pos_sp.timestamp = hrt_absolute_time();
+		_pos_sp.x = _debug_vec.x;
+		_pos_sp.y = _debug_vec.y;
+		_pos_sp.z = _debug_vec.z;
+		_pos_sp.vx = _px_hat;
+		_pos_sp.vy = _vx_hat;
+		_pos_sp.vz = _Va_hat;
+		_pos_sp.acceleration[0] = _posx_derivate.vel;
+		// _pos_sp.acceleration[1] = _vy_hat; // 判断一下TD的滤波输出如何
+		_pos_sp.acceleration[1] = _posy_derivate.vel; // 判断一下TD的滤波输出如何
+		_pos_sp.acceleration[2] = _posz_derivate.vel; // 判断一下TD的速度估计如何
+		_vehicle_local_pos_sp_pub.publish(_pos_sp);
+		// ****** 显示TD估计结果 ******
+
 		// att_sp.thrust_body[0] = 0; // 最大油门量为1
 		// att_sp.thrust_body[2] = 0;
 		_hy_att_sp_pub.publish(att_sp);
 
+		printf("h vel sp:%f %f e:%f e_i:%f fx_sp:%f\n", (double)Va_sp, (double)_Va_hat, (double)_Va_e, (double)_Va_e_i, (double)fx_sp);
 		printf("h dep sp:%f %f e:%f e_i:%f fz_sp:%f\n", (double)depth_sp, (double)depth, (double)_depth_e, (double)_depth_e_i, (double)fz_sp);// (double)pitch_sp_sat);
 		// printf("h thrust_sp: %f %f \n", (double)att_sp.thrust_body[0], (double)att_sp.thrust_body[2]);
 	}
