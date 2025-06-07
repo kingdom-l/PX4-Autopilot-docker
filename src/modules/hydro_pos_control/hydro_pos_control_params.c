@@ -240,12 +240,25 @@ PARAM_DEFINE_FLOAT(HY_VA_SP, 1.5f);
  *
  * @unit
  * @min 0.0
- * @max 200.0
+ * @max 1.0
  * @decimal 2
  * @increment 0.01
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_VE_RES, 20.0f);
+PARAM_DEFINE_FLOAT(HY_VE_RES, 0.05f);
+
+/**
+ * Hydro vel controller output 1/slope
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5000.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VFX_SP_SLOPE, 300.0f);
 
 /**
  * Hydro vel error a
@@ -258,7 +271,7 @@ PARAM_DEFINE_FLOAT(HY_VE_RES, 20.0f);
  * @increment 0.01
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_VE_A, 0.01f);
+PARAM_DEFINE_FLOAT(HY_VE_A, 0.05f);
 
 /**
  * Hydro vel error b
@@ -271,7 +284,7 @@ PARAM_DEFINE_FLOAT(HY_VE_A, 0.01f);
  * @increment 0.01
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_VE_B, 0.03f);
+PARAM_DEFINE_FLOAT(HY_VE_B, 1.1f);
 
 /**
  * Hydro vel integretor output limit

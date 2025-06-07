@@ -272,13 +272,18 @@ HydroPositionControl::Run()
 		// 积分限幅
 		_Va_e_i = math::constrain(_Va_e_i, -_param_hy_ve_ilimit.get(), _param_hy_ve_ilimit.get());
 		float resolution = _param_hy_ve_res.get();
+		float fx_sp_slope = _param_hy_vfx_sp_slope.get();
 		float fx_sp = _param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp; //总输出
+		fx_sp = math::constrain(fx_sp, -fx_sp_slope, fx_sp_slope);
 		//总输出限幅
-		if(fx_sp > resolution)
+		if(fx_sp >= 0)
 		{
-			fx_sp = resolution;
+			fx_sp = resolution + fx_sp / fx_sp_slope * (1 - resolution);
 		}
-		fx_sp = _param_hy_va_lim.get() * (float)(exp(fx_sp - resolution));
+		else
+		{
+			fx_sp = resolution + fx_sp / fx_sp_slope * resolution;
+		}
 		// float fx_sp = math::constrain(_param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp, 0.f, _param_hy_va_lim.get());  // [0, 1]
 
 		// if(std::fabs(_param_hy_va_i.get()) > 1e-6f){

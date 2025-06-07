@@ -218,6 +218,7 @@ private:
 		(ParamFloat<px4::params::HY_VA_LIM>) _param_hy_va_lim,
 		(ParamFloat<px4::params::HY_VA_SP>) _param_hy_va_sp,
 		(ParamFloat<px4::params::HY_VE_RES>) _param_hy_ve_res,
+		(ParamFloat<px4::params::HY_VFX_SP_SLOPE>) _param_hy_vfx_sp_slope,
 		(ParamFloat<px4::params::HY_VE_A>) _param_hy_ve_a,
 		(ParamFloat<px4::params::HY_VE_B>) _param_hy_ve_b,
 		(ParamFloat<px4::params::HY_VE_ILIMIT>) _param_hy_ve_ilimit,
