@@ -43,4 +43,5 @@ px4_add_module(
 		hydro_yaw_controller.cpp
 	DEPENDS
 		px4_work_queue
+		pid_custom
 	)

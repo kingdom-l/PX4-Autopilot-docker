@@ -68,6 +68,11 @@
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_thrust_setpoint.h>
 #include <uORB/topics/vehicle_torque_setpoint.h>
+#include <lib/pid_custom/pid_custom.hpp>
+
+// ****** 调试角速率控制专用 ******
+#include <uORB/topics/vehicle_local_position_setpoint.h>
+// ****** 调试角速率控制专用 ******
 
 using matrix::Eulerf;
 using matrix::Quatf;
@@ -119,6 +124,11 @@ private:
 	vehicle_status_s			_vehicle_status{};
 	vehicle_control_mode_s			_vhycontrol_mode{};
 
+	// ****** 调试专用 ******
+	uORB::Publication<vehicle_local_position_setpoint_s> _rate_pos_sp_pub{ORB_ID(vehicle_local_position_setpoint)};
+	vehicle_local_position_setpoint_s _rate_pos_sp{};
+	// ****** 调试专用 ******
+
 	perf_counter_t _loop_perf;
 
 	hrt_abstime _last_run{0};
@@ -137,6 +147,8 @@ private:
 	LowPassFilter _hy_yawr_lpf;
 
 	void LPFilter(float in, LowPassFilter* lpf_params);
+
+	PID_Improvement_e _improve = static_cast<PID_Improvement_e>(PID_Trapezoid_Intergral | PID_ChangingIntegrationRate | PID_FORWARD_FEEDBACK);
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_AIRSPD_MAX>) _param_hy_airspd_max,		//最大空速
@@ -164,25 +176,31 @@ private:
 		(ParamFloat<px4::params::HY_MAN_R_SC>) _param_hy_man_r_sc,
 		(ParamFloat<px4::params::HY_MAN_Y_SC>) _param_hy_man_y_sc,
 
-		(ParamFloat<px4::params::HY_PR_FF>) _param_hy_pr_ff,			//pitch rate控制器的前馈、ki、imax、kp、kd
-		(ParamFloat<px4::params::HY_PR_I>) _param_hy_pr_i,
-		(ParamFloat<px4::params::HY_PR_IMAX>) _param_hy_pr_imax,
-		(ParamFloat<px4::params::HY_PR_P>) _param_hy_pr_p,
-		(ParamFloat<px4::params::HY_PR_D>) _param_hy_pr_d,
+		(ParamFloat<px4::params::HY_PR_KP>) _param_hy_pr_kp,                    //pitch rate控制器的前馈、ki、imax、kp、kd
+		(ParamFloat<px4::params::HY_PR_KI>) _param_hy_pr_ki,
+		(ParamFloat<px4::params::HY_PR_MAXOUT>) _param_hy_pr_maxout,
+		(ParamFloat<px4::params::HY_PR_ILIMIT>) _param_hy_pr_ilimit,
+		(ParamFloat<px4::params::HY_PR_FK>) _param_hy_pr_fk,
+		(ParamFloat<px4::params::HY_PR_EA>) _param_hy_pr_ea,
+		(ParamFloat<px4::params::HY_PR_EB>) _param_hy_pr_eb,
 		(ParamFloat<px4::params::HY_PR_TCP>) _param_hy_pr_tcp,
 
 		(ParamFloat<px4::params::HY_RLL_TO_YAW_FF>) _param_hy_rll_to_yaw_ff,	//将roll轴力矩直接前馈到yaw轴上
-		(ParamFloat<px4::params::HY_RR_FF>) _param_hy_rr_ff,
-		(ParamFloat<px4::params::HY_RR_I>) _param_hy_rr_i,
-		(ParamFloat<px4::params::HY_RR_IMAX>) _param_hy_rr_imax,
-		(ParamFloat<px4::params::HY_RR_P>) _param_hy_rr_p,
-		(ParamFloat<px4::params::HY_RR_D>) _param_hy_rr_d,
+		(ParamFloat<px4::params::HY_RR_KP>) _param_hy_rr_kp,
+		(ParamFloat<px4::params::HY_RR_KI>) _param_hy_rr_ki,
+		(ParamFloat<px4::params::HY_RR_MAXOUT>) _param_hy_rr_maxout,
+		(ParamFloat<px4::params::HY_RR_ILIMIT>) _param_hy_rr_ilimit,
+		(ParamFloat<px4::params::HY_RR_FK>) _param_hy_rr_fk,
+		(ParamFloat<px4::params::HY_RR_EA>) _param_hy_rr_ea,
+		(ParamFloat<px4::params::HY_RR_EB>) _param_hy_rr_eb,
 
-		(ParamFloat<px4::params::HY_YR_FF>) _param_hy_yr_ff,
-		(ParamFloat<px4::params::HY_YR_I>) _param_hy_yr_i,
-		(ParamFloat<px4::params::HY_YR_IMAX>) _param_hy_yr_imax,
-		(ParamFloat<px4::params::HY_YR_P>) _param_hy_yr_p,
-		(ParamFloat<px4::params::HY_YR_D>) _param_hy_yr_d,
+		(ParamFloat<px4::params::HY_YR_KP>) _param_hy_yr_kp,
+		(ParamFloat<px4::params::HY_YR_KI>) _param_hy_yr_ki,
+		(ParamFloat<px4::params::HY_YR_MAXOUT>) _param_hy_yr_maxout,
+		(ParamFloat<px4::params::HY_YR_ILIMIT>) _param_hy_yr_ilimit,
+		(ParamFloat<px4::params::HY_YR_FK>) _param_hy_yr_fk,
+		(ParamFloat<px4::params::HY_YR_EA>) _param_hy_yr_ea,
+		(ParamFloat<px4::params::HY_YR_EB>) _param_hy_yr_eb,
 
 		(ParamFloat<px4::params::TRIM_PITCH>) _param_trim_pitch,		//平衡空速下需要补偿多少pitch力矩才能使让pitch轴不动
 		(ParamFloat<px4::params::TRIM_ROLL>) _param_trim_roll,
@@ -197,8 +215,11 @@ private:
 		(ParamFloat<px4::params::HY_YR_LPF_FC>) _param_hy_yr_lpf_fc
 	)
 
-	RateControl _rate_control; ///< class for rate control calculations
+	// RateControl _rate_control; ///< class for rate control calculations
 
+	PIDCustom _ratex_pid{_improve};
+	PIDCustom _ratey_pid{_improve};
+	PIDCustom _ratez_pid{_improve};
 
 	/**
 	 * Update our local parameter cache.

@@ -237,7 +237,7 @@ PARAM_DEFINE_FLOAT(HY_HTAIL_AREA, 0.02);
  *
  *
  * @unit rad
- * @min 0.0
+ * @min -0.7
  * @max 0.7
  * @decimal 2
  * @increment 0.1
@@ -248,13 +248,13 @@ PARAM_DEFINE_FLOAT(HY_WING_ANG_MAX, 0.7);
 /**
  * Index of Hydro Right Motor in Actuators Setup
  *
- * hy_motro_l motor1      hy_motor_r motor2
+ * hy_motro_l motor2      hy_motor_r motor1
  *
  *
  * @boolean
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_INT32(HY_LMOTOR_IDX, 1);
+PARAM_DEFINE_INT32(HY_LMOTOR_IDX, 2);
 
 /**
  * Index of Hydro Left Motor in Actuators Setup
@@ -264,7 +264,7 @@ PARAM_DEFINE_INT32(HY_LMOTOR_IDX, 1);
  * @boolean
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_INT32(HY_RMOTOR_IDX, 2);
+PARAM_DEFINE_INT32(HY_RMOTOR_IDX, 1);
 
 /**
  * Index of Hydro Horizontal Tail Servo in Actuators Setup
@@ -337,7 +337,7 @@ PARAM_DEFINE_FLOAT(HY_ST_INFO_Y2, 0.);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_ST_INFO_Z2, 0.1);
+PARAM_DEFINE_FLOAT(HY_ST_INFO_Z2, 0.0);
 
 /**
  * Structure info
@@ -353,7 +353,7 @@ PARAM_DEFINE_FLOAT(HY_ST_INFO_Z2, 0.1);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_ST_INFO_YT, 0.3);
+PARAM_DEFINE_FLOAT(HY_ST_INFO_YT, 0.02);
 
 /**
  * Structure info
@@ -367,7 +367,7 @@ PARAM_DEFINE_FLOAT(HY_ST_INFO_YT, 0.3);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_ST_INFO_YY, 0.1);
+PARAM_DEFINE_FLOAT(HY_ST_INFO_YY, 0.02);
 
 /**
  * Structure info
@@ -380,7 +380,7 @@ PARAM_DEFINE_FLOAT(HY_ST_INFO_YY, 0.1);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_ST_INFO_HT, 0.8);
+PARAM_DEFINE_FLOAT(HY_ST_INFO_HT, 0.6);
 
 /**
  * Pitch moment weight for fxr
@@ -406,7 +406,7 @@ PARAM_DEFINE_FLOAT(HY_FXR_WEIGHT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_FZR_WEIGHT, 0);
+PARAM_DEFINE_FLOAT(HY_FZR_WEIGHT, -10);
 
 /**
  * Pitch moment weight for fxl
@@ -432,4 +432,4 @@ PARAM_DEFINE_FLOAT(HY_FXL_WEIGHT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_FZL_WEIGHT, 0);
+PARAM_DEFINE_FLOAT(HY_FZL_WEIGHT, -10);

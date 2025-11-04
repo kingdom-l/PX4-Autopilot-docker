@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020-2023 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2015 Roman Bapst. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,7 +12,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name ECL nor the names of its contributors may be
+ * 3. Neither the name PX4 nor the names of its contributors may be
  *    used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,36 +32,53 @@
  ****************************************************************************/
 
 /**
- * @file hydro_roll_controller.cpp
- * Implementation of a simple roll P controller.
+ * @file pid_custom.hpp
  */
 
-#include "hydro_roll_controller.h"
+#pragma once
+
+#include <lib/mathlib/mathlib.h>
+#include <matrix/math.hpp>
 #include <float.h>
-#include <lib/geo/geo.h>
-#include <mathlib/mathlib.h>
+#include <cmath>
+#include "pid_type.h"
 
-float RollController::control_roll(float roll_setpoint, float euler_yaw_rate_setpoint, float roll, float pitch)
+// 预期通过其他模块调用该对象，并通过其他模块来获取px4::params，赋值给td参数
+class PIDCustom
 {
-	/* Do not calculate control signal with bad inputs */
-	if (!(PX4_ISFINITE(roll_setpoint) &&
-	      PX4_ISFINITE(euler_yaw_rate_setpoint) &&
-	      PX4_ISFINITE(pitch) &&
-	      PX4_ISFINITE(roll))) {
+public:
+	// PIDCustom(int pid);
 
-		return _body_rate_setpoint;
+	PIDCustom(PID_Improvement_e Improve) {
+		memset(&_pid, 0, sizeof(_pid));
+		_pid.Improve = Improve;
 	}
 
-	const float roll_error = roll_setpoint - roll;
+	~PIDCustom() = default;
 
-	_euler_rate_setpoint = roll_error / _tc;
+	void abs_limit(float *a, float ABS_MAX);
 
-	// _euler_rate_setpoint = _euler_roll_lpf.apply(_euler_rate_setpoint);
+	float get_deltaT(hrt_abstime *then);
 
-	/* Transform setpoint to body angular rates (jacobian) */
-	const float roll_body_rate_setpoint_raw = _euler_rate_setpoint - sinf(pitch) *
-			euler_yaw_rate_setpoint;
-	_body_rate_setpoint = math::constrain(roll_body_rate_setpoint_raw, -_max_rate, _max_rate);
+	void f_trapezoid_intergral();
 
-	return _body_rate_setpoint;
-}
+	void f_changing_integration_rate();
+
+	void f_derivative_on_measurement();
+
+	void f_derivative_filter();
+
+	void f_output_filter();
+
+	float forward_feed(Forward_Feed_s *instance, float in);
+
+	void update_parameter(float kp, float ki, float maxout, float ilimit, float ea, float eb, float fk);
+
+	float pid_calculate(float get, float set);
+
+	float pid_get_iout(){return _pid.Iout;}
+
+private:
+
+	PIDInstance _pid;
+};

@@ -96,6 +96,7 @@
 #include <lib/tracking_differentiator/tracking_differentiator.hpp>
 #include <lib/mathlib/math/filter/LowPassFilter2p.hpp>
 
+
 // #include <lib/Eigen/Eigen.h>
 
 using namespace time_literals;
@@ -180,6 +181,7 @@ private:
 	float _Va_hat = 0.f;
 	// Eigen::MatrixXf _mat(3, 3);
 
+
 	float _water_density = 1000;
 	float _depth_e = 0.f, _depth_e_i = 0.f;
 	float _depth_e_pre = 0.f;
@@ -206,8 +208,8 @@ private:
 		(ParamFloat<px4::params::HY_DEP_I>) _param_hy_dep_i,
 		(ParamFloat<px4::params::HY_DEP_FF>) _param_hy_dep_ff,
 		(ParamFloat<px4::params::HY_DEP_LIM>) _param_hy_dep_lim,
-		(ParamFloat<px4::params::HY_P_LIM>) _param_hy_p_lim,
-		(ParamFloat<px4::params::HY_R_LIM>) _param_hy_r_lim,
+		(ParamFloat<px4::params::HY_D_PMAX>) _param_hy_d_pmax,
+		(ParamFloat<px4::params::HY_D_RMAX>) _param_hy_d_rmax,
 		(ParamFloat<px4::params::HY_DEPSAT_MAX>) _param_hy_depsat_max,
 		(ParamFloat<px4::params::HY_DEPSAT_K>) _param_hy_depsat_k,
 		(ParamFloat<px4::params::HY_DEPTH_SP>) _param_hy_depth_sp,

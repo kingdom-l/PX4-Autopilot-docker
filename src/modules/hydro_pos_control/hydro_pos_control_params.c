@@ -89,7 +89,7 @@ PARAM_DEFINE_FLOAT(HY_DEP_FF, 0.0f);
 PARAM_DEFINE_FLOAT(HY_DEP_LIM, 5.0f);
 
 /**
- * Maximum pitch angle for hydro depth control output
+ * Maximum pitch angle for manual control setpoint
  *
  * The maximum pitch angle setpoint setpoint for a height-rate or altitude controlled mode.
  *
@@ -100,7 +100,7 @@ PARAM_DEFINE_FLOAT(HY_DEP_LIM, 5.0f);
  * @increment 0.5
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_P_LIM, 30.0f);
+PARAM_DEFINE_FLOAT(HY_D_PMAX, 30.0f);
 
 /**
  * Maximum roll angle for manual control setpoint
@@ -114,7 +114,7 @@ PARAM_DEFINE_FLOAT(HY_P_LIM, 30.0f);
  * @increment 0.5
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_R_LIM, 30.0f);
+PARAM_DEFINE_FLOAT(HY_D_RMAX, 30.0f);
 
 /**
  * Hydro depth saturate max value

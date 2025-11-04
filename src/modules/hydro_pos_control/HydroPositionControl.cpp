@@ -370,9 +370,8 @@ HydroPositionControl::Run()
 		_manual_control_setpoint_sub.update(&_manual_control_setpoint);
 		vehicle_attitude_setpoint_s att_sp{};
 		att_sp.timestamp = hrt_absolute_time();
-		// att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_r_lim.get()); // roll的手动控制反应很慢
-		att_sp.roll_body = radians(-1.5); // rad
-		att_sp.pitch_body = 0; //pitch_sp_sat; // rad
+		att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_d_rmax.get()); // rad roll的手动控制反应很慢
+		att_sp.pitch_body = 0; //-_manual_control_setpoint.pitch * radians(_param_hy_d_pmax.get());// rad
 		att_sp.yaw_body = euler_angles.psi();
 		att_sp.thrust_body[0] = fx_sp; // 最大油门量为1
 		att_sp.thrust_body[2] = fz_sp;
@@ -399,26 +398,25 @@ HydroPositionControl::Run()
 		// ****** 发布速度和深度曲线 ******
 
 		// ****** 显示TD估计结果 ******
-		_pos_sp.timestamp = hrt_absolute_time();
-		_pos_sp.x = _debug_vec.x;
-		_pos_sp.y = _debug_vec.y;
-		_pos_sp.z = _debug_vec.z;
-		_pos_sp.vx = _px_hat;
-		_pos_sp.vy = _vx_hat;
-		_pos_sp.vz = _Va_hat;
-		_pos_sp.acceleration[0] = _posx_derivate.vel;
-		// _pos_sp.acceleration[1] = _vy_hat; // 判断一下TD的滤波输出如何
-		_pos_sp.acceleration[1] = _posy_derivate.vel; // 判断一下TD的滤波输出如何
-		_pos_sp.acceleration[2] = _posz_derivate.vel; // 判断一下TD的速度估计如何
-		_vehicle_local_pos_sp_pub.publish(_pos_sp);
+		// _pos_sp.timestamp = hrt_absolute_time();
+		// _pos_sp.x = _debug_vec.x;
+		// _pos_sp.y = _debug_vec.y;
+		// _pos_sp.z = _debug_vec.z;
+		// _pos_sp.vx = _px_hat;
+		// _pos_sp.vy = _vx_hat;
+		// _pos_sp.vz = _Va_hat;
+		// _pos_sp.acceleration[0] = _posx_derivate.vel;
+		// // _pos_sp.acceleration[1] = _vy_hat; // 判断一下TD的滤波输出如何
+		// _pos_sp.acceleration[1] = _posy_derivate.vel; // 判断一下TD的滤波输出如何
+		// _pos_sp.acceleration[2] = _posz_derivate.vel; // 判断一下TD的速度估计如何
+		// _vehicle_local_pos_sp_pub.publish(_pos_sp);
 		// ****** 显示TD估计结果 ******
 
-		// att_sp.thrust_body[0] = 0; // 最大油门量为1
-		// att_sp.thrust_body[2] = 0;
 		_hy_att_sp_pub.publish(att_sp);
 
-		printf("h vel sp:%f %f e:%f e_i:%f fx_sp:%f\n", (double)Va_sp, (double)_Va_hat, (double)_Va_e, (double)_Va_e_i, (double)fx_sp);
-		printf("h dep sp:%f %f e:%f e_i:%f fz_sp:%f\n", (double)depth_sp, (double)depth, (double)_depth_e, (double)_depth_e_i, (double)fz_sp);// (double)pitch_sp_sat);
+		// printf("h vel sp:%f %f e:%f e_i:%f fx_sp:%f\n", (double)Va_sp, (double)_Va_hat, (double)_Va_e, (double)_Va_e_i, (double)fx_sp);
+		// printf("h dep sp:%f %f e:%f e_i:%f fz_sp:%f\n", (double)depth_sp, (double)depth, (double)_depth_e, (double)_depth_e_i, (double)fz_sp);// (double)pitch_sp_sat);
+		printf("h att r_sp:%f p_sp:%f \n", (double)att_sp.roll_body, (double)att_sp.pitch_body);// (double)pitch_sp_sat);
 		// printf("h thrust_sp: %f %f \n", (double)att_sp.thrust_body[0], (double)att_sp.thrust_body[2]);
 	}
 

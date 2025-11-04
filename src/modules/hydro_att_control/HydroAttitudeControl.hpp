@@ -64,6 +64,7 @@
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <lib/pid_custom/pid_custom.hpp>
 
 using matrix::Eulerf;
 using matrix::Quatf;
@@ -117,6 +118,9 @@ private:
 
 	hrt_abstime _last_run{0};
 
+	// PID_Improvement_e _improve = static_cast<PID_Improvement_e>(static_cast<int>(PID_Trapezoid_Intergral) | static_cast<int>(PID_ChangingIntegrationRate) | static_cast<int>(PID_FORWARD_FEEDBACK));
+	PID_Improvement_e _improve = static_cast<PID_Improvement_e>(PID_Trapezoid_Intergral | PID_ChangingIntegrationRate | PID_FORWARD_FEEDBACK);
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_AIRSPD_MAX>) _param_hy_airspd_max,		//最大空速
 		(ParamFloat<px4::params::HY_AIRSPD_STALL>) _param_hy_airspd_stall,	//失速空速
@@ -124,10 +128,31 @@ private:
 
 		(ParamFloat<px4::params::HY_P_RMAX_NEG>) _param_hy_p_rmax_neg,	//机体坐标系下pitch变化率限幅（下限）
 		(ParamFloat<px4::params::HY_P_RMAX_POS>) _param_hy_p_rmax_pos,	//机体坐标系下pitch变化率限幅（上限）
-		(ParamFloat<px4::params::HY_P_TC>) _param_hy_p_tc,			//pitch控制器比例时间常数（就是比例因子的倒数）
+		(ParamFloat<px4::params::HY_P_KP>) _param_hy_p_kp,			//pitch控制器比例常数
+		(ParamFloat<px4::params::HY_P_KI>) _param_hy_p_ki,			//pitch控制器积分常数
+		(ParamFloat<px4::params::HY_P_MAXOUT>) _param_hy_p_maxout,	        //pitch控制器外环最大输出
+		(ParamFloat<px4::params::HY_P_ILIMIT>) _param_hy_p_ilimit,	        //pitch控制器积分限幅
+		(ParamFloat<px4::params::HY_P_EA>) _param_hy_p_ea,			//pitch控制器积分分离常数
+		(ParamFloat<px4::params::HY_P_EB>) _param_hy_p_eb,			//pitch控制器积分分离常数
+		(ParamFloat<px4::params::HY_P_FK>) _param_hy_p_fk,			//pitch控制器前馈系数
 
-		(ParamFloat<px4::params::HY_R_RMAX>) _param_hy_r_rmax,		//机体坐标系下roll变化率限幅
-		(ParamFloat<px4::params::HY_R_TC>) _param_hy_r_tc,			//roll控制器比例时间常数（就是比例因子的倒数）
+		(ParamFloat<px4::params::HY_R_RMAX>) _param_hy_r_rmax,		        //机体坐标系下roll变化率限幅
+		(ParamFloat<px4::params::HY_R_KP>) _param_hy_r_kp,			//roll控制器比例常数
+		(ParamFloat<px4::params::HY_R_KI>) _param_hy_r_ki,			//roll控制器积分常数
+		(ParamFloat<px4::params::HY_R_MAXOUT>) _param_hy_r_maxout,	        //roll控制器外环最大输出
+		(ParamFloat<px4::params::HY_R_ILIMIT>) _param_hy_r_ilimit,	        //roll控制器积分限幅
+		(ParamFloat<px4::params::HY_R_EA>) _param_hy_r_ea,			//roll控制器积分分离常数
+		(ParamFloat<px4::params::HY_R_EB>) _param_hy_r_eb,			//roll控制器积分分离常数
+		(ParamFloat<px4::params::HY_R_FK>) _param_hy_r_fk,			//roll控制器前馈系数
+
+		(ParamFloat<px4::params::HY_R_KP>) _param_hy_y_kp,			//yaw控制器比例常数
+		(ParamFloat<px4::params::HY_R_KI>) _param_hy_y_ki,			//yaw控制器积分常数
+		(ParamFloat<px4::params::HY_R_MAXOUT>) _param_hy_y_maxout,	        //yaw控制器外环最大输出
+		(ParamFloat<px4::params::HY_R_ILIMIT>) _param_hy_y_ilimit,	        //yaw控制器积分限幅
+		(ParamFloat<px4::params::HY_R_EA>) _param_hy_y_ea,			//yaw控制器积分分离常数
+		(ParamFloat<px4::params::HY_R_EB>) _param_hy_y_eb,			//yaw控制器积分分离常数
+		(ParamFloat<px4::params::HY_R_FK>) _param_hy_y_fk,			//yaw控制器前馈系数
+
 		(ParamFloat<px4::params::HY_Y_RMAX>) _param_hy_y_rmax,
 		(ParamBool<px4::params::HY_Y_CTURN_EN>) _param_hy_y_ctrun_en,  // 使能coordinated turn control
 
@@ -148,9 +173,17 @@ private:
 
 	)
 
-	RollController _roll_ctrl;
-	PitchController _pitch_ctrl;
+	// ****** 固定翼姿态控制 ******
+	// RollController _roll_ctrl;
+	// PitchController _pitch_ctrl;
 	YawController _yaw_ctrl;
+	// ****** 固定翼姿态控制 ******
+
+	PIDCustom _roll_pid{_improve};
+	PIDCustom _pitch_pid{_improve};
+	// PIDCustom _yaw_pid{_improve};
+
+
 
 	hrt_abstime _dive_dn_total_time;
 	hrt_abstime _dive_cru_total_time;
@@ -160,8 +193,10 @@ private:
 	uint8_t _last_nav_state{255};
 
 	void parameters_update();
-	void auto_dive_poll(const float yaw_body);
+
 	void vehicle_manual_poll(const float yaw_body);
+
 	void vehicle_attitude_setpoint_poll();
+
 	float get_airspeed_constrained();
 };

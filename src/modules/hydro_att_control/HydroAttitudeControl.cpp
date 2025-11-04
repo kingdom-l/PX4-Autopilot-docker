@@ -32,7 +32,6 @@
  ****************************************************************************/
 
 #include "HydroAttitudeControl.hpp"
-
 #include <include/HyModeName.hpp>
 
 using namespace time_literals;
@@ -69,59 +68,28 @@ HydroAttitudeControl::init()
 void
 HydroAttitudeControl::parameters_update()
 {
-	_roll_ctrl.set_time_constant(_param_hy_r_tc.get());
-	_roll_ctrl.set_max_rate(radians(_param_hy_r_rmax.get()));
+	// _roll_ctrl.set_time_constant(_param_hy_r_tc.get());
+	// _roll_ctrl.set_max_rate(radians(_param_hy_r_rmax.get()));
 
-	_pitch_ctrl.set_time_constant(_param_hy_p_tc.get());
-	_pitch_ctrl.set_max_rate_pos(radians(_param_hy_p_rmax_pos.get()));
-	_pitch_ctrl.set_max_rate_neg(radians(_param_hy_p_rmax_neg.get()));
+	// _pitch_ctrl.set_time_constant(_param_hy_p_tc.get());
+	// _pitch_ctrl.set_max_rate_pos(radians(_param_hy_p_rmax_pos.get()));
+	// _pitch_ctrl.set_max_rate_neg(radians(_param_hy_p_rmax_neg.get()));
 
 	_yaw_ctrl.set_max_rate(radians(_param_hy_y_rmax.get()));
 
-	_dive_dn_total_time = (hrt_abstime)(1000000.0f * _param_dive_dn_sec.get());
-	_dive_cru_total_time = _dive_dn_total_time + (hrt_abstime)(1000000.0f * _param_dive_cru_sec.get());
-	_dive_up_total_time = _dive_cru_total_time + (hrt_abstime)(1000000.0f * _param_dive_up_sec.get());
+	// _dive_dn_total_time = (hrt_abstime)(1000000.0f * _param_dive_dn_sec.get());
+	// _dive_cru_total_time = _dive_dn_total_time + (hrt_abstime)(1000000.0f * _param_dive_cru_sec.get());
+	// _dive_up_total_time = _dive_cru_total_time + (hrt_abstime)(1000000.0f * _param_dive_up_sec.get());
+
+	// ****** 更新PID参数 ******
+	_roll_pid.update_parameter(_param_hy_r_kp.get(),_param_hy_r_ki.get(),_param_hy_r_maxout.get(),  \
+				_param_hy_r_ilimit.get(),_param_hy_r_ea.get(),_param_hy_r_eb.get(),_param_hy_r_fk.get());
+	_pitch_pid.update_parameter(_param_hy_p_kp.get(),_param_hy_p_ki.get(),_param_hy_p_maxout.get(),  \
+				_param_hy_p_ilimit.get(),_param_hy_p_ea.get(),_param_hy_p_eb.get(),_param_hy_p_fk.get());
+	// _yaw_pid.update_parameter(_param_hy_y_kp.get(),_param_hy_y_ki.get(),_param_hy_y_maxout.get(),
+	// 			_param_hy_y_ilimit.get(),_param_hy_y_ea.get(),_param_hy_y_eb.get(),_param_hy_y_fk.get());
+	// ****** 更新PID参数 ******
 }
-
-// void
-// HydroAttitudeControl::auto_dive_poll(const float yaw_body)
-// {
-// 	if (_vehicle_status.nav_state == HYDRO_MODE_ALTCTL) {
-
-// 		_hy_att_sp.roll_body = 0;
-// 		_hy_att_sp.yaw_body = yaw_body;
-
-// 		if(hrt_absolute_time() - _auto_dive_start_time < _dive_dn_total_time)
-// 		{
-// 			_hy_att_sp.pitch_body = radians(_param_dive_dn_deg.get());
-// 			_hy_att_sp.thrust_body[0] = _param_dive_dn_thr.get();
-// 		}
-// 		else if(hrt_absolute_time() - _auto_dive_start_time < _dive_cru_total_time)
-// 		{
-// 			_hy_att_sp.pitch_body = radians(_param_dive_cru_deg.get());
-// 			_hy_att_sp.thrust_body[0] = _param_dive_cru_thr.get();
-// 		}
-// 		else if(hrt_absolute_time() - _auto_dive_start_time < _dive_up_total_time)
-// 		{
-// 			_hy_att_sp.pitch_body = radians(_param_dive_up_deg.get());
-// 			_hy_att_sp.thrust_body[0] = _param_dive_up_thr.get();
-// 		}
-// 		else
-// 		{
-// 			_hy_att_sp.pitch_body = radians(0);
-// 			_hy_att_sp.thrust_body[0] = 0;
-// 		}
-
-// 		Quatf q(Eulerf(_hy_att_sp.roll_body, _hy_att_sp.pitch_body, _hy_att_sp.yaw_body));
-// 		q.copyTo(_hy_att_sp.q_d);
-
-// 		_hy_att_sp.reset_integral = false;
-
-// 		_hy_att_sp.timestamp = hrt_absolute_time();
-
-// 		_hy_att_sp_pub.publish(_hy_att_sp);
-// 	}
-// }
 
 void
 HydroAttitudeControl::vehicle_manual_poll(const float yaw_body)
@@ -259,19 +227,36 @@ void HydroAttitudeControl::Run()
 				// printf("att control\n");
 
 				if (PX4_ISFINITE(_hy_att_sp.roll_body) && PX4_ISFINITE(_hy_att_sp.pitch_body)) {
-					_roll_ctrl.control_roll(_hy_att_sp.roll_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
-								euler_angles.theta());
-					_pitch_ctrl.control_pitch(_hy_att_sp.pitch_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
-									euler_angles.theta());
-					_yaw_ctrl.control_yaw(_hy_att_sp.roll_body, _pitch_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
+
+					// _roll_ctrl.control_roll(_hy_att_sp.roll_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
+					// 			euler_angles.theta());
+					// _pitch_ctrl.control_pitch(_hy_att_sp.pitch_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
+					// 				euler_angles.theta());
+
+					float roll_output = 0.f, pitch_output = 0.f;
+
+					roll_output = _roll_pid.pid_calculate(euler_angles.phi(), _hy_att_sp.roll_body); // rad
+					pitch_output = _pitch_pid.pid_calculate(euler_angles.theta(), _hy_att_sp.pitch_body); // rad
+					_yaw_ctrl.control_yaw(_hy_att_sp.roll_body, pitch_output, euler_angles.phi(),
 								euler_angles.theta(), get_airspeed_constrained());
 
+					float pitch_body_rate_setpoint = 0.f, roll_body_rate_setpoint = 0.f;
+					// 把pitch的惯性角速率转换为机体角速率
+					pitch_body_rate_setpoint = cosf(euler_angles.phi()) * pitch_output +
+									cosf(euler_angles.theta()) * sinf(euler_angles.phi()) * _yaw_ctrl.get_euler_rate_setpoint();
+					pitch_body_rate_setpoint = math::constrain(pitch_body_rate_setpoint, -radians(_param_hy_p_rmax_neg.get()), radians(_param_hy_p_rmax_pos.get()));
+					// 把roll轴的惯性角速率转换为机体角速率
+					roll_body_rate_setpoint = roll_output - sinf(euler_angles.theta()) * _yaw_ctrl.get_euler_rate_setpoint();
+					roll_body_rate_setpoint = math::constrain(roll_body_rate_setpoint, -radians(_param_hy_r_rmax.get()), radians(_param_hy_r_rmax.get()));
+					// 把yaw轴的惯性角速率转换为机体角速率
+					// yaw_body_rate_setpoint = -sinf(euler_angles.phi()) * pitch_output +
+					// 				cosf(euler_angles.phi()) * cosf(euler_angles.theta()) * yaw_output;
+					// yaw_body_rate_setpoint = math::constrain(yaw_body_rate_setpoint, -radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
 					/* Update input data for rate controllers */
-					Vector3f body_rates_setpoint = Vector3f(_roll_ctrl.get_body_rate_setpoint(), _pitch_ctrl.get_body_rate_setpoint(),
-										_yaw_ctrl.get_body_rate_setpoint());
+					Vector3f body_rates_setpoint = Vector3f(roll_body_rate_setpoint, pitch_body_rate_setpoint, _yaw_ctrl.get_body_rate_setpoint());
 					// printf("att rate_pitch_sp: %f \n", (double)_hy_rates_sp.pitch);
 
-					/* add yaw rate setpoint from sticks */
+					/* add yaw rate setpoint from sticks 通过摇杆添加偏航角速率 */
 					if (_vhycontrol_mode.flag_control_manual_enabled)
 					{
 						body_rates_setpoint(2) += math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
@@ -287,6 +272,8 @@ void HydroAttitudeControl::Run()
 						_hy_rates_sp.yaw = math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
 											-radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
 					}
+					printf("att roll sp:%f %f iout:%f %f rate_sp:%f\n", (double)_hy_att_sp.roll_body, (double)euler_angles.phi(), (double)_roll_pid.pid_get_iout(), (double)roll_output, (double)roll_body_rate_setpoint);
+					// printf("att pitch pid_out: %f %f %f %f\n", (double)euler_angles.theta(), (double)_pitch_pid.pid_get_iout(), (double)pitch_output, (double)pitch_body_rate_setpoint);
 					// printf("att th_sp: %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2]);
 					// printf("att rate_sp: %f %f %f %f\n", (double)_hy_rates_sp.thrust_body[0], (double)_hy_rates_sp.thrust_body[2], (double)_hy_rates_sp.pitch, (double)_hy_rates_sp.yaw);
 

@@ -39,42 +39,93 @@
  */
 
 /**
- * Pitch rate proportional gain.
+ * Pitch Rate Proportional Gain.
  *
- * @unit %/rad/s
+ * @unit
  * @min 0.0
  * @max 10
  * @decimal 3
  * @increment 0.005
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_PR_P, 0.08f);
+PARAM_DEFINE_FLOAT(HY_PR_KP, 0.4f);
 
 /**
- * Pitch rate derivative gain.
+ * Pitch Rate Integrator Gain.
  *
- * Pitch rate differential gain.
- *
- * @unit %/rad/s
+ * @unit
  * @min 0.0
  * @max 10
  * @decimal 3
  * @increment 0.005
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_PR_D, 0.f);
+PARAM_DEFINE_FLOAT(HY_PR_KI, 0.0f);
 
 /**
- * Pitch rate integrator gain.
+ * Pitch Rate Maxout.
  *
- * @unit %/rad
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_PR_MAXOUT, 1.f);
+
+/**
+ * Pitch Rate Integral limit.
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1.0
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_PR_ILIMIT, 0.4f);
+
+/**
+ * Pitch Rate Forward Feedback gain.
+ *
+ *
+ * @unit
  * @min 0.0
  * @max 10
  * @decimal 3
  * @increment 0.005
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_PR_I, 0.1f);
+PARAM_DEFINE_FLOAT(HY_PR_FK, 0.f);
+
+/**
+ * Pitch Rate Integral error A (smaller one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_PR_EA, 0.1f);
+
+/**
+ * Pitch Rate Integral error B (bigger one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_PR_EB, 0.2f);
 
 /**
  * Thrust Compensation for Pitch rate.
@@ -89,151 +140,182 @@ PARAM_DEFINE_FLOAT(HY_PR_I, 0.1f);
 PARAM_DEFINE_FLOAT(HY_PR_TCP, 0.1f);
 
 /**
- * Pitch rate integrator limit
+ * Roll Rate Proportional Gain.
  *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_RR_KP, 0.33f);
+
+/**
+ * Roll Rate Integrator Gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_RR_KI, 0.f);
+
+/**
+ * Roll Rate Maxout.
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_RR_MAXOUT, 1.f);
+
+/**
+ * Roll Rate Integral limit.
+ *
+ *
+ * @unit
  * @min 0.0
  * @max 1.0
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_RR_ILIMIT, 0.2f);
+
+/**
+ * Roll Rate Forward Feedback gain.
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_RR_FK, 0.3f);
+
+/**
+ * Roll Rate Integral error A (smaller one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
  * @decimal 2
  * @increment 0.05
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_PR_IMAX, 0.4f);
+PARAM_DEFINE_FLOAT(HY_RR_EA, 0.1f);
 
 /**
- * Roll rate proportional gain
+ * Roll Rate Integral error B (bigger one)
  *
- * @unit %/rad/s
- * @min 0.0
- * @max 10
- * @decimal 3
- * @increment 0.005
- * @group Hydro Rate Control
- */
-PARAM_DEFINE_FLOAT(HY_RR_P, 0.05f);
-
-/**
- * Roll rate derivative gain
  *
- * @unit %/rad/s
+ * @unit
  * @min 0.0
- * @max 10
- * @decimal 3
- * @increment 0.005
- * @group Hydro Rate Control
- */
-PARAM_DEFINE_FLOAT(HY_RR_D, 0.0f);
-
-/**
- * Roll rate integrator gain
- *
- * @unit %/rad
- * @min 0.0
- * @max 10
+ * @max 5.0
  * @decimal 2
- * @increment 0.01
+ * @increment 0.05
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_RR_I, 0.1f);
+PARAM_DEFINE_FLOAT(HY_RR_EB, 0.2f);
 
 /**
- * Roll integrator limit
+ * Yaw Rate Proportional Gain.
  *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_YR_KP, 0.3f);
+
+/**
+ * Yaw Rate Integrator Gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_YR_KI, 0.f);
+
+/**
+ * Yaw Rate Maxout.
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.005
+ * @group Hydro Rate Control
+ */
+PARAM_DEFINE_FLOAT(HY_YR_MAXOUT, 1.f);
+
+/**
+ * Yaw Rate Integral limit.
+ *
+ *
+ * @unit
  * @min 0.0
  * @max 1.0
- * @decimal 2
- * @increment 0.05
+ * @decimal 3
+ * @increment 0.005
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_RR_IMAX, 0.2f);
+PARAM_DEFINE_FLOAT(HY_YR_ILIMIT, 0.2f);
 
 /**
- * Yaw rate proportional gain
+ * Yaw Rate Forward Feedback gain.
  *
- * @unit %/rad/s
+ *
+ * @unit
  * @min 0.0
  * @max 10
  * @decimal 3
  * @increment 0.005
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_YR_P, 0.05f);
+PARAM_DEFINE_FLOAT(HY_YR_FK, 0.3f);
 
 /**
- * Yaw rate derivative gain
+ * Yaw Rate Integral error A (smaller one)
  *
- * @unit %/rad/s
- * @min 0.0
- * @max 10
- * @decimal 3
- * @increment 0.005
- * @group Hydro Rate Control
- */
-PARAM_DEFINE_FLOAT(HY_YR_D, 0.0f);
-
-/**
- * Yaw rate integrator gain
  *
- * @unit %/rad
+ * @unit
  * @min 0.0
- * @max 10
- * @decimal 1
- * @increment 0.5
- * @group Hydro Rate Control
- */
-PARAM_DEFINE_FLOAT(HY_YR_I, 0.1f);
-
-/**
- * Yaw rate integrator limit
- *
- * @min 0.0
- * @max 1.0
+ * @max 5.0
  * @decimal 2
  * @increment 0.05
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_YR_IMAX, 0.2f);
+PARAM_DEFINE_FLOAT(HY_YR_EA, 0.1f);
 
 /**
- * Roll rate feed forward
+ * Yaw Rate Integral error B (bigger one)
  *
- * Direct feed forward from rate setpoint to control surface output.
  *
- * @unit %/rad/s
+ * @unit
  * @min 0.0
- * @max 10.0
+ * @max 5.0
  * @decimal 2
  * @increment 0.05
  * @group Hydro Rate Control
  */
-PARAM_DEFINE_FLOAT(HY_RR_FF, 0.5f);
-
-/**
- * Pitch rate feed forward
- *
- * Direct feed forward from rate setpoint to control surface output
- *
- * @unit %/rad/s
- * @min 0.0
- * @max 10.0
- * @decimal 2
- * @increment 0.05
- * @group Hydro Rate Control
- */
-PARAM_DEFINE_FLOAT(HY_PR_FF, 0.5f);
-
-/**
- * Yaw rate feed forward
- *
- * Direct feed forward from rate setpoint to control surface output
- *
- * @unit %/rad/s
- * @min 0.0
- * @max 10.0
- * @decimal 2
- * @increment 0.05
- * @group Hydro Rate Control
- */
-PARAM_DEFINE_FLOAT(HY_YR_FF, 0.3f);
+PARAM_DEFINE_FLOAT(HY_YR_EB, 0.2f);
 
 /**
  * Acro body roll max rate setpoint for manual control setpoint

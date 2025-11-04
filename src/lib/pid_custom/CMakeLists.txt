@@ -31,15 +31,8 @@
 #
 ############################################################################
 
-px4_add_module(
-	MODULE modules__hydro_rate_control
-	MAIN hydro_rate_control
-	SRCS
-		HydroRateControl.cpp
-		HydroRateControl.hpp
-	DEPENDS
-		px4_work_queue
-		pid_custom
-		RateControl
-		SlewRate
-	)
+px4_add_library(pid_custom
+	pid_custom.cpp
+	pid_custom.hpp
+	pid_type.h
+)

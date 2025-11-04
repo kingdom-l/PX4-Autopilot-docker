@@ -41,34 +41,277 @@
  */
 
 /**
- * Attitude Roll Time Constant
+ * Attitude Roll Proportion item
  *
- * This defines the latency between a roll step input and the achieved setpoint
- * (inverse to a P gain). Smaller systems may require smaller values.
  *
- * @unit s
- * @min 0.2
- * @max 1.0
+ * @unit
+ * @min 0.0
+ * @max 10.0
  * @decimal 2
  * @increment 0.05
  * @group Hydro Attitude Control
  */
-PARAM_DEFINE_FLOAT(HY_R_TC, 0.4f);
+PARAM_DEFINE_FLOAT(HY_R_KP, 5f);
 
 /**
- * Attitude pitch time constant
+ * Attitude Roll Integral item
  *
- * This defines the latency between a pitch step input and the achieved setpoint
- * (inverse to a P gain). Smaller systems may require smaller values.
  *
- * @unit s
- * @min 0.2
+ * @unit
+ * @min 0.0
+ * @max 10.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_R_KI, 0.0f);
+
+/**
+ * Attitude Roll MAX output
+ *
+ *
+ * @unit rad/s
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_R_MAXOUT, 0.9f);
+
+/**
+ * Attitude Roll Integral limit
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_R_ILIMIT, 0.2f);
+
+/**
+ * Attitude Roll Integral error A (smaller one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_R_EA, 0.1f);
+
+/**
+ * Attitude Roll Integral error B (bigger one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_R_EB, 0.2f);
+
+/**
+ * Attitude Roll Forward Feedback gain
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_R_FK, 0.3f);
+
+/**
+ * Attitude Pitch Proportion item
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 10.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_KP, 2.5f);
+
+/**
+ * Attitude Pitch Integral item
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 50.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_KI, 0.0f);
+
+/**
+ * Attitude Pitch MAX output
+ *
+ *
+ * @unit rad/s
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_MAXOUT, 2.0f);
+
+/**
+ * Attitude Pitch Integral limit
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 50.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_ILIMIT, 0.5f);
+
+/**
+ * Attitude Pitch Integral error A (smaller one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_EA, 0.1f);
+
+/**
+ * Attitude Pitch Integral error B (bigger one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_EB, 0.2f);
+
+/**
+ * Attitude Pitch Forward Feedback gain
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 2.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_P_FK, 0.3f);
+
+/**
+ * Attitude Yaw Proportion item
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 10.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_Y_KP, 2.5f);
+
+/**
+ * Attitude Yaw Integral item
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_Y_KI, 0.0f);
+
+/**
+ * Attitude Yaw MAX output
+ *
+ *
+ * @unit rad/s
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_Y_MAXOUT, 2.0f);
+
+/**
+ * Attitude Yaw Integral limit
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 2.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_Y_ILIMIT, 1.0f);
+
+/**
+ * Attitude Yaw Integral error A (smaller one)
+ *
+ *
+ * @unit
+ * @min 0.0
  * @max 1.0
  * @decimal 2
  * @increment 0.05
  * @group Hydro Attitude Control
  */
-PARAM_DEFINE_FLOAT(HY_P_TC, 0.2f);
+PARAM_DEFINE_FLOAT(HY_Y_EA, 0.1f);
+
+/**
+ * Attitude Yaw Integral error B (bigger one)
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 2.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_Y_EB, 0.2f);
+
+/**
+ * Attitude Yaw Forward Feedback gain
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Attitude Control
+ */
+PARAM_DEFINE_FLOAT(HY_Y_FK, 1.0f);
 
 /**
  * Maximum positive / up pitch rate setpoint
@@ -87,7 +330,7 @@ PARAM_DEFINE_FLOAT(HY_P_RMAX_POS, 120.0f);
  *
  * @unit deg/s
  * @min 0.0
- * @max 180
+ * @max 180.0
  * @decimal 1
  * @increment 0.5
  * @group Hydro Attitude Control
@@ -104,7 +347,7 @@ PARAM_DEFINE_FLOAT(HY_P_RMAX_NEG, 120.0f);
  * @increment 0.5
  * @group Hydro Attitude Control
  */
-PARAM_DEFINE_FLOAT(HY_R_RMAX, 70.0f);
+PARAM_DEFINE_FLOAT(HY_R_RMAX, 50.0f);
 
 /**
  * Maximum yaw rate setpoint for yaw control output
