@@ -109,8 +109,10 @@ private:
 	matrix::Vector<float, 5> _wrench_sp;
 
 	struct NfParams{
+		float Cl2;
 		float Cl;
 		float Cl0;
+		float Cd2;
 		float Cd;
 		float Cd0;
 		float S_wing;
@@ -155,8 +157,10 @@ private:
 		(ParamBool<px4::params::HY_SPEED_SELECT>) _param_hy_speed_select,
 		(ParamFloat<px4::params::HY_THRUST_MAX>) _param_hy_thrust_max,
 		(ParamFloat<px4::params::HY_TH_MAX_GAIN>) _param_hy_th_max_gain,
+		(ParamFloat<px4::params::HY_RHF_CL2>) _param_hy_rhf_cl2,
 		(ParamFloat<px4::params::HY_RHF_CL>) _param_hy_rhf_cl,
 		(ParamFloat<px4::params::HY_RHF_CL0>) _param_hy_rhf_cl0, // rhf: right hydrofoil
+		(ParamFloat<px4::params::HY_RHF_CD2>) _param_hy_rhf_cd2,
 		(ParamFloat<px4::params::HY_RHF_CD>) _param_hy_rhf_cd,
 		(ParamFloat<px4::params::HY_RHF_CD0>) _param_hy_rhf_cd0,
 		(ParamFloat<px4::params::HY_RHF_AREA>) _param_hy_rhf_area,

@@ -131,15 +131,19 @@ HydroControlAllocator::parameters_update()
 	_hy_mix(4,0) = -_st_info.z2/_st_info.ht; _hy_mix(4,1) = _st_info.x2/_st_info.ht; _hy_mix(4,2) = 0;
 	_hy_mix(4,3) = 1/_st_info.ht;            _hy_mix(4,4) = 0;
 
+	_nf_params_hy_wr.Cl2 = _param_hy_rhf_cl2.get();
 	_nf_params_hy_wr.Cl = _param_hy_rhf_cl.get();
 	_nf_params_hy_wr.Cl0 = _param_hy_rhf_cl0.get();
+	_nf_params_hy_wr.Cd2 = _param_hy_rhf_cd2.get();
 	_nf_params_hy_wr.Cd = _param_hy_rhf_cd.get();
 	_nf_params_hy_wr.Cd0 = _param_hy_rhf_cd0.get();
 	_nf_params_hy_wr.S_wing = _param_hy_rhf_area.get();
 	_nf_params_hy_wr.with_thrust = true;
 
+	_nf_params_hy_wl.Cl2 = _param_hy_rhf_cl2.get();
 	_nf_params_hy_wl.Cl = _param_hy_rhf_cl.get();
 	_nf_params_hy_wl.Cl0 = _param_hy_rhf_cl0.get();
+	_nf_params_hy_wl.Cd2 = _param_hy_rhf_cd2.get();
 	_nf_params_hy_wl.Cd = _param_hy_rhf_cd.get();
 	_nf_params_hy_wl.Cd0 = _param_hy_rhf_cd0.get();
 	_nf_params_hy_wl.S_wing = _param_hy_rhf_area.get();
@@ -160,10 +164,17 @@ SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
 		float gamma = x_opt(0);  // rad
 		float T = x_opt(1);
 
-		J(0, 0) = T * sinf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * p.Cl * sinf(_alpha)  + 0.5f * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
+		// J(0, 0) = T * sinf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * p.Cl * sinf(_alpha)  + 0.5f * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
+		// J(0, 1) = -cosf(gamma) / _rho;
+		// J(1, 0) = T * cosf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * p.Cl * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
+		// J(1, 1) = sinf(gamma) / _rho;
+
+		// ****** 更换水动力系数 ******
+		J(0, 0) = T * sinf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * (2 * p.Cl2 * (gamma + _alpha) + p.Cl) * sinf(_alpha) + 0.5f * p.S_wing * _Va2 * (2 * p.Cd2 * (gamma + _alpha) + p.Cd) * cosf(_alpha);
 		J(0, 1) = -cosf(gamma) / _rho;
-		J(1, 0) = T * cosf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * p.Cl * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * p.Cd * sinf(_alpha);
+		J(1, 0) = T * cosf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * (2 * p.Cl2 * (gamma + _alpha) + p.Cl) * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * (2 * p.Cd2 * (gamma + _alpha) + p.Cd) * sinf(_alpha);
 		J(1, 1) = sinf(gamma) / _rho;
+		// ****** 更换水动力系数 ******
 	}else{
 		// J(0, 0) = - 0.5f * _rho * p.S_wing * _Va2 * p.Cl * sinf(_alpha) + 0.5f * _rho * p.S_wing * _Va2 * p.Cd * cosf(_alpha);
 		J(0, 0) = 0;
@@ -180,8 +191,16 @@ Vector2f HydroControlAllocator::func(Vector2f x_opt, NfParams p)
 	float gamma = x_opt(0); // * (float)(M_PI) / 180.f; // rad
 	float T = x_opt(1);
 	Vector2f out;
-	out(0) = p.Fx / _rho - T * cosf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * sinf(_alpha) + 0.5f * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * cosf(_alpha);
-	out(1) = p.Fz / _rho + T * sinf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * (p.Cl*(gamma+_alpha)+p.Cl0) * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * (p.Cd*(gamma+_alpha)+p.Cd0) * sinf(_alpha);
+	// float cl = (p.Cl*(gamma+_alpha)+p.Cl0);
+	// float cd = (p.Cd*(gamma+_alpha)+p.Cd0);
+
+	// ****** 更换水动力系数 ******
+	float cl = (p.Cl2 * (gamma + _alpha) * (gamma + _alpha) + p.Cl * (gamma + _alpha) + p.Cl0);
+	float cd = (p.Cd2 * (gamma + _alpha) * (gamma + _alpha) + p.Cd * (gamma + _alpha) + p.Cd0);
+	// ****** 更换水动力系数 ******
+
+	out(0) = p.Fx / _rho - T * cosf(gamma) / _rho - 0.5f * p.S_wing * _Va2 * cl * sinf(_alpha) + 0.5f * p.S_wing * _Va2 * cd * cosf(_alpha);
+	out(1) = p.Fz / _rho + T * sinf(gamma) / _rho + 0.5f * p.S_wing * _Va2 * cl * cosf(_alpha) + 0.5f * p.S_wing * _Va2 * cd * sinf(_alpha);
 	return out;
 }
 

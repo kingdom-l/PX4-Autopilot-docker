@@ -113,7 +113,20 @@ PARAM_DEFINE_FLOAT(HY_TH_MAX_GAIN, 1.5);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CL, 0.14);
+PARAM_DEFINE_FLOAT(HY_RHF_CL2, 0.006);
+
+/**
+ * Right hydrofoil lift coefficient
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 5
+ * @decimal 2
+ * @increment 0.0001
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_RHF_CL, 1.5764);
 
 /**
  * Right hydrofoil zero-lift coefficient
@@ -126,7 +139,20 @@ PARAM_DEFINE_FLOAT(HY_RHF_CL, 0.14);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CL0, 0);
+PARAM_DEFINE_FLOAT(HY_RHF_CL0, 0.0004);
+
+/**
+ * Right hydrofoil drag coefficient
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 5
+ * @decimal 2
+ * @increment 0.0001
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_RHF_CD2, 1.1834);
 
 /**
  * Right hydrofoil drag coefficient
@@ -139,7 +165,7 @@ PARAM_DEFINE_FLOAT(HY_RHF_CL0, 0);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CD, 0.0034);
+PARAM_DEFINE_FLOAT(HY_RHF_CD, 0.0042);
 
 /**
  * Right hydrofoil zero-lift drag coefficient
@@ -152,10 +178,10 @@ PARAM_DEFINE_FLOAT(HY_RHF_CD, 0.0034);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CD0, 0.0048);
+PARAM_DEFINE_FLOAT(HY_RHF_CD0, 0.2115);
 
 /**
- * Wing area of  Right hydrofoil
+ * Wing area of Right hydrofoil
  *
  *
  * @unit
@@ -165,7 +191,7 @@ PARAM_DEFINE_FLOAT(HY_RHF_CD0, 0.0048);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_AREA, 0.015);
+PARAM_DEFINE_FLOAT(HY_RHF_AREA, 0.0105);
 
 /**
  * Horizontal tail lift coefficient
