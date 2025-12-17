@@ -55,6 +55,7 @@
 #include <uORB/topics/autotune_attitude_control_status.h>
 #include <uORB/topics/landing_gear_wheel.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/vehicle_attitude.h>
@@ -102,6 +103,7 @@ private:
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};				/**< vehicle status subscription */
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};	/**< notification of manual control updates */
 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};			/**< vehicle status subscription */
+	uORB::Subscription _manual_control_switches_sub{ORB_ID(manual_control_switches)};	/**< 订阅遥控器解锁信号 */
 
 	uORB::Publication<vehicle_rates_setpoint_s>	_hy_rates_sp_pub{ORB_ID(hy_vehicle_rates_setpoint)};
 	uORB::Publication<vehicle_attitude_setpoint_s>	_hy_att_sp_pub{ORB_ID(hy_vehicle_attitude_setpoint)}; // RC output
@@ -110,7 +112,12 @@ private:
 	vehicle_rates_setpoint_s		_hy_rates_sp{};
 	vehicle_status_s			_vehicle_status{};
 	manual_control_setpoint_s		_manual_control_setpoint{};
+	manual_control_switches_s		_manual_control_switches{};
 	vehicle_control_mode_s			_vhycontrol_mode{};
+
+	bool _roll_calib_en = false;
+	float _roll_bias = 0.f;
+	uint8_t _calibrate_once = 0;       // 校准过了，就不要再校准了
 
 	matrix::Dcmf _R{matrix::eye<float, 3>()};
 

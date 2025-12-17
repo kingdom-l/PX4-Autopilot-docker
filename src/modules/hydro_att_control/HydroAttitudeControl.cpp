@@ -227,7 +227,34 @@ void HydroAttitudeControl::Run()
 				// printf("att control\n");
 
 				if (PX4_ISFINITE(_hy_att_sp.roll_body) && PX4_ISFINITE(_hy_att_sp.pitch_body)) {
+					_manual_control_switches_sub.copy(&_manual_control_switches);
+					if(_manual_control_switches.arm_switch == 1 && _calibrate_once == 0)//解锁是1，锁定是3
+					{
+						float roll_pre;
+						roll_pre = euler_angles.phi();
+						const hrt_abstime time_begin_calib = hrt_absolute_time();
 
+						while(hrt_absolute_time()-time_begin_calib < 3e6 && _roll_calib_en == false)
+						{
+							_roll_calib_en = true;
+							for(int i = 0; i < 20; i++){
+								if(fabs(euler_angles.phi() - roll_pre) < 1e-2){
+									_roll_bias = euler_angles.phi();
+									roll_pre = euler_angles.phi();
+								}else{
+									_roll_calib_en = false;
+									break;
+								}
+
+							}
+
+						}
+						if(_roll_calib_en == false)
+						{
+							_roll_bias = 0.f;
+						}
+						_calibrate_once = 1;
+					}
 					// _roll_ctrl.control_roll(_hy_att_sp.roll_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
 					// 			euler_angles.theta());
 					// _pitch_ctrl.control_pitch(_hy_att_sp.pitch_body, _yaw_ctrl.get_euler_rate_setpoint(), euler_angles.phi(),
@@ -235,7 +262,7 @@ void HydroAttitudeControl::Run()
 
 					float roll_output = 0.f, pitch_output = 0.f;
 
-					roll_output = _roll_pid.pid_calculate(euler_angles.phi(), _hy_att_sp.roll_body); // rad
+					roll_output = _roll_pid.pid_calculate(euler_angles.phi() - _roll_bias, _hy_att_sp.roll_body); // rad
 					pitch_output = _pitch_pid.pid_calculate(euler_angles.theta(), _hy_att_sp.pitch_body); // rad
 					_yaw_ctrl.control_yaw(_hy_att_sp.roll_body, pitch_output, euler_angles.phi(),
 								euler_angles.theta(), get_airspeed_constrained());
@@ -272,7 +299,7 @@ void HydroAttitudeControl::Run()
 						_hy_rates_sp.yaw = math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
 											-radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
 					}
-					printf("att roll sp:%f %f iout:%f %f rate_sp:%f\n", (double)_hy_att_sp.roll_body, (double)euler_angles.phi(), (double)_roll_pid.pid_get_iout(), (double)roll_output, (double)roll_body_rate_setpoint);
+					printf("att roll sp:%f %f e:%f iout:%f %f rate_sp:%f\n", (double)_hy_att_sp.roll_body, (double)euler_angles.phi(), (double)(_hy_att_sp.roll_body - euler_angles.phi()), (double)_roll_pid.pid_get_iout(), (double)roll_output, (double)roll_body_rate_setpoint);
 					// printf("att pitch pid_out: %f %f %f %f\n", (double)euler_angles.theta(), (double)_pitch_pid.pid_get_iout(), (double)pitch_output, (double)pitch_body_rate_setpoint);
 					// printf("att th_sp: %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2]);
 					// printf("att rate_sp: %f %f %f %f\n", (double)_hy_rates_sp.thrust_body[0], (double)_hy_rates_sp.thrust_body[2], (double)_hy_rates_sp.pitch, (double)_hy_rates_sp.yaw);
