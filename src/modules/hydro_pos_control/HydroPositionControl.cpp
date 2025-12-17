@@ -383,18 +383,18 @@ HydroPositionControl::Run()
 		// }
 
 		// ****** 发布速度和深度曲线 ******
-		// _pos_sp.timestamp = hrt_absolute_time();
-		// _pos_sp.x = Va_sp;
-		// _pos_sp.y = _Va_hat;
-		// _pos_sp.z = _Va_e;
-		// _pos_sp.vx = _Va_e_i;
-		// _pos_sp.vy = fx_sp;
-		// _pos_sp.vz = depth_sp;
-		// _pos_sp.acceleration[0] = depth;
-		// _pos_sp.acceleration[1] = _depth_e;
-		// _pos_sp.acceleration[2] = _depth_e_i;
-		// _pos_sp.yaw = fz_sp;
-		// _vehicle_local_pos_sp_pub.publish(_pos_sp);
+		_pos_sp.timestamp = hrt_absolute_time();
+		_pos_sp.x = Va_sp;
+		_pos_sp.y = _Va_hat;
+		_pos_sp.z = _Va_e;
+		_pos_sp.vx = _Va_e_i;
+		_pos_sp.vy = fx_sp;
+		_pos_sp.vz = depth_sp;
+		_pos_sp.acceleration[0] = depth;
+		_pos_sp.acceleration[1] = _depth_e;
+		_pos_sp.acceleration[2] = _depth_e_i;
+		_pos_sp.yaw = fz_sp;
+		_vehicle_local_pos_sp_pub.publish(_pos_sp);
 		// ****** 发布速度和深度曲线 ******
 
 		// ****** 显示TD估计结果 ******
@@ -415,8 +415,8 @@ HydroPositionControl::Run()
 		_hy_att_sp_pub.publish(att_sp);
 
 		// printf("h vel sp:%f %f e:%f e_i:%f fx_sp:%f\n", (double)Va_sp, (double)_Va_hat, (double)_Va_e, (double)_Va_e_i, (double)fx_sp);
-		// printf("h dep sp:%f %f e:%f e_i:%f fz_sp:%f\n", (double)depth_sp, (double)depth, (double)_depth_e, (double)_depth_e_i, (double)fz_sp);// (double)pitch_sp_sat);
-		printf("h att r_sp:%f p_sp:%f \n", (double)att_sp.roll_body, (double)att_sp.pitch_body);// (double)pitch_sp_sat);
+		// printf("h dep sp:%f %f e:%f e_i:%f fz_sp:%f\n", (double)depth_sp, (double)depth, (double)_depth_e, (double)_depth_e_i, (double)fz_sp); // (double)pitch_sp_sat);
+		// printf("h att r_sp:%f p_sp:%f \n", (double)att_sp.roll_body, (double)att_sp.pitch_body);// (double)pitch_sp_sat);
 		// printf("h thrust_sp: %f %f \n", (double)att_sp.thrust_body[0], (double)att_sp.thrust_body[2]);
 	}
 

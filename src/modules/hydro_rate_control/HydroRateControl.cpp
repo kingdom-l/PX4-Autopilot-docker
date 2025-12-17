@@ -284,7 +284,7 @@ void HydroRateControl::Run()
 			ratex_output = _ratex_pid.pid_calculate(rates(0), _rates_sp.roll); // rad
 			ratey_output = _ratey_pid.pid_calculate(rates(1), _rates_sp.pitch); // rad
 			ratez_output = _ratez_pid.pid_calculate(rates(2), _rates_sp.yaw); // rad
-			printf("rate_pid out: %f %f %f \n", (double)ratex_output, (double)ratey_output, (double)ratez_output);
+			// printf("rate_pid out: %f %f %f \n", (double)ratex_output, (double)ratey_output, (double)ratez_output);
 
 			const Vector3f angular_acceleration_setpoint = Vector3f(ratex_output, ratey_output, ratez_output);
 
@@ -334,14 +334,19 @@ void HydroRateControl::Run()
 			}
 
 			// ****** 调试角速率控制，与postion通道显示信息冲突 ******
-			_rate_pos_sp.timestamp = hrt_absolute_time();
-			_rate_pos_sp.x = _rates_sp.roll;
-			_rate_pos_sp.y = rates(0);
-			_rate_pos_sp.z = _rates_sp.pitch;
-			_rate_pos_sp.vx = rates(1);
-			_rate_pos_sp.vy = _rates_sp.yaw;
-			_rate_pos_sp.vz = rates(2);
-			_rate_pos_sp_pub.publish(_rate_pos_sp);
+			// vehicle_attitude_s att{};
+			// matrix::Dcmf _R{matrix::eye<float, 3>()};
+			// _att_sub.copy(&att);
+			// _R = matrix::Quatf(att.q);
+			// matrix::Eulerf euler_angles(_R);
+			// _rate_pos_sp.timestamp = hrt_absolute_time();
+			// _rate_pos_sp.x = 0;
+			// _rate_pos_sp.y = euler_angles.phi();
+			// _rate_pos_sp.z = _rates_sp.roll;
+			// _rate_pos_sp.vx = rates(0);
+			// _rate_pos_sp.vy = _rates_sp.yaw;
+			// _rate_pos_sp.vz = rates(2);
+			// _rate_pos_sp_pub.publish(_rate_pos_sp);
 			// ****** 调试角速率控制，与postion通道显示信息冲突 ******
 
 			printf("ratex sp:%f %f e:%f e_i:%f u_sp:%f\n", (double)_rates_sp.roll, (double)rates(0), (double)(_rates_sp.roll - rates(0)), (double)_ratex_pid.pid_get_iout(), (double)control_u(0));

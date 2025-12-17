@@ -72,6 +72,7 @@
 
 // ****** 调试角速率控制专用 ******
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/vehicle_attitude.h>
 // ****** 调试角速率控制专用 ******
 
 using matrix::Eulerf;
@@ -103,6 +104,7 @@ private:
 	void Run() override;
 
 	uORB::SubscriptionCallbackWorkItem _vehicle_angular_velocity_sub{this, ORB_ID(vehicle_angular_velocity)};
+	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};		/**< vehicle attitude */
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 

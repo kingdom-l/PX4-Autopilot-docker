@@ -50,7 +50,7 @@
  * @increment 0.5
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 4.0);
+PARAM_DEFINE_FLOAT(HY_AIRAPEED_TRIM, 1.5);
 
 /**
  * Hydro Angle of Attack Trim
@@ -82,12 +82,12 @@ PARAM_DEFINE_INT32(HY_SPEED_SELECT, 0);
  *
  * @unit N
  * @min 0
- * @max 15
+ * @max 30
  * @decimal 2
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_THRUST_MAX, 10);
+PARAM_DEFINE_FLOAT(HY_THRUST_MAX, 26);
 
 /**
  * Maximum thrust Gain of a single underwater thruster
@@ -113,7 +113,7 @@ PARAM_DEFINE_FLOAT(HY_TH_MAX_GAIN, 1.5);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CL2, 0.006);
+PARAM_DEFINE_FLOAT(HY_RHF_CL2, 0.003);
 
 /**
  * Right hydrofoil lift coefficient
@@ -126,20 +126,20 @@ PARAM_DEFINE_FLOAT(HY_RHF_CL2, 0.006);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CL, 1.5764);
+PARAM_DEFINE_FLOAT(HY_RHF_CL, 0.7882);
 
 /**
  * Right hydrofoil zero-lift coefficient
  *
  *
  * @unit
- * @min 0
+ * @min -0.1
  * @max 1
  * @decimal 2
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CL0, 0.0004);
+PARAM_DEFINE_FLOAT(HY_RHF_CL0, -0.0002);
 
 /**
  * Right hydrofoil drag coefficient
@@ -152,7 +152,7 @@ PARAM_DEFINE_FLOAT(HY_RHF_CL0, 0.0004);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CD2, 1.1834);
+PARAM_DEFINE_FLOAT(HY_RHF_CD2, 0.5917);
 
 /**
  * Right hydrofoil drag coefficient
@@ -165,7 +165,7 @@ PARAM_DEFINE_FLOAT(HY_RHF_CD2, 1.1834);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CD, 0.0042);
+PARAM_DEFINE_FLOAT(HY_RHF_CD, 0.0021);
 
 /**
  * Right hydrofoil zero-lift drag coefficient
@@ -178,7 +178,7 @@ PARAM_DEFINE_FLOAT(HY_RHF_CD, 0.0042);
  * @increment 0.0001
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_RHF_CD0, 0.2115);
+PARAM_DEFINE_FLOAT(HY_RHF_CD0, 0.1057);
 
 /**
  * Wing area of Right hydrofoil

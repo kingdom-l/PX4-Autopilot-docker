@@ -188,7 +188,7 @@ SquareMatrix<float, 2> HydroControlAllocator::J_func(Vector2f x_opt, NfParams p)
 
 Vector2f HydroControlAllocator::func(Vector2f x_opt, NfParams p)
 {
-	float gamma = x_opt(0); // * (float)(M_PI) / 180.f; // rad
+	float gamma = x_opt(0);  // rad
 	float T = x_opt(1);
 	Vector2f out;
 	// float cl = (p.Cl*(gamma+_alpha)+p.Cl0);
@@ -255,7 +255,7 @@ void HydroControlAllocator::optim(float x_opt[2], NfParams p)
 
 			x(0) = x(0) + delta_x;
 
-			x(0) = math::constrain(x(0), - wing_ang_max, wing_ang_max); // deg
+			x(0) = math::constrain(x(0), - wing_ang_max, wing_ang_max); // rad
 			// printf("func_out: %f %f %f \n", (double)J(1,0), (double)func_out(0), (double)func_out(1));
 		}
 	}
@@ -298,9 +298,9 @@ void HydroControlAllocator::Run()
 	// Also run allocator on thrust setpoint changes if the torque setpoint
 	// has not been updated for more than 5ms
 	if (_hydro_thrust_setpoint_sub.update(&hydro_thrust_setpoint)) {
-		_wrench_sp(0) = hydro_thrust_setpoint.xyz[0] * 2.0f * _param_hy_thrust_max.get(); // 油门量[0, 1],但实际分配中推力改为无量纲
+		_wrench_sp(0) = hydro_thrust_setpoint.xyz[0] * 2.0f * _param_hy_thrust_max.get(); // 油门量[0, 1],但实际分配中推力改为有量纲
 		_wrench_sp(1) = hydro_thrust_setpoint.xyz[2];
-		// printf("_wrench_sp: %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(1));
+		printf("_wrench_sp: %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(1));
 		if (dt > 0.005f) {
 			do_update = true;
 			_timestamp_sample = hydro_thrust_setpoint.timestamp_sample;
@@ -383,19 +383,15 @@ void HydroControlAllocator::Run()
 
 		float wing_ang_max = _param_hy_wing_ang_max.get(); // rad
 
-		// float x_opt[2][2] = {{math::constrain(atan2f(-_nf_params_hy_wr.Fz, _nf_params_hy_wr.Fx) * 0.5f, -wing_ang_max, wing_ang_max), math::constrain(sqrtf(_nf_params_hy_wr.Fx*_nf_params_hy_wr.Fx+_nf_params_hy_wr.Fz*_nf_params_hy_wr.Fz), 0.f, _param_hy_thrust_max.get())},
-		// 	       	     {math::constrain(atan2f(-_nf_params_hy_wl.Fz, _nf_params_hy_wl.Fx) * 0.5f, -wing_ang_max, wing_ang_max), math::constrain(sqrtf(_nf_params_hy_wl.Fx*_nf_params_hy_wl.Fx+_nf_params_hy_wl.Fz*_nf_params_hy_wl.Fz), 0.f, _param_hy_thrust_max.get())}};
-
-		// printf("hy right: %f %f ", (double)_nf_params_hy_wr.Fx, (double)_nf_params_hy_wr.Fz);
-		// printf("hy left: %f %f \n", (double)_nf_params_hy_wl.Fx, (double)_nf_params_hy_wl.Fz);
+		printf("hy r: %f %f l: %f %f \n", (double)_nf_params_hy_wr.Fx, (double)_nf_params_hy_wr.Fz, (double)_nf_params_hy_wl.Fx, (double)_nf_params_hy_wl.Fz);
 
 		float x_opt[2][2] = {{0.f, _nf_params_hy_wr.Fx*0.5f},
-			       	     {0.f, _nf_params_hy_wl.Fx*0.5f}}; // 初值取得可能有问题，cosf单位rad
+			       	     {0.f, _nf_params_hy_wl.Fx*0.5f}}; // cosf单位rad
 		optim(x_opt[0], _nf_params_hy_wr);
 		optim(x_opt[1], _nf_params_hy_wl);
 
 		// printf("hy opt gamma: r:%f l:%f ", (double)(x_opt[0][0]/wing_ang_max), (double)(x_opt[1][0]/wing_ang_max));
-		// printf("hy opt thrust: r:%f l:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()));
+		printf("hy opt th: r:%f l:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()));
 		// printf("hy opt thrust: r:%f l:%f ht:%f \n", (double)(x_opt[0][1]), (double)(x_opt[1][1]), (double)_hy_tail_torque);
 
 		// LPFilter(x_opt[0][0], &_lpf_hy_wr);
