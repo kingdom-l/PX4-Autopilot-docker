@@ -45,7 +45,7 @@
 class TwoOrderEso
 {
 public:
-	TwoOrderEso(float b0, float beta1, float beta2);
+	TwoOrderEso(float b0, float beta1, float beta2, float h);
 
 	~TwoOrderEso() = default;
 
@@ -59,10 +59,11 @@ public:
 		return _z20;
 	}
 
-	void set_params(float b0, float beta1, float beta2){
+	void set_params(float b0, float beta1, float beta2, float h){
 		_b0 = b0;
 		_beta1 = beta1;
 		_beta2 = beta2;
+		_h = h;
 	}
 
 private:
@@ -75,5 +76,6 @@ private:
 	float _b0;
 	float _beta1;
 	float _beta2;
+	float _h;
 
 };

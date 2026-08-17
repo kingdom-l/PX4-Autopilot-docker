@@ -34,25 +34,33 @@
 #include "three_order_eso.hpp"
 
 
-ThreeOrderEso::ThreeOrderEso(float beta1, float beta2, float beta3) :
+ThreeOrderEso::ThreeOrderEso(float b0, float beta1, float beta2, float beta3, float h) :
+	_b0(b0),
 	_beta1(beta1),
 	_beta2(beta2),
-	_beta3(beta3)
+	_beta3(beta3),
+	_h(h)
 {
 	_z10 = 0.0f;
 	_z20 = 0.0f;
 	_z30 = 0.0f;
 }
 
-void ThreeOrderEso::update(float u, float y, float b)
+void ThreeOrderEso::update(float u, float y)
 {
 
-	float h = 0.01;
+	if(!PX4_ISFINITE(_z10) || !PX4_ISFINITE(_z20) || !PX4_ISFINITE(_z30)){
+		_z10 = 0.0f;
+		_z20 = 0.0f;
+		_z30 = 0.0f;
+	}
+
+	// float h = 0.01;
 	float e = _z10 - y;
 
-	float z1k = _z10 + h * (_z20 - _beta1 * e);
-	float z2k = _z20 + h * (_z30 + b * u - _beta2 * fal(e, 0.5, 0.05));
-	float z3k = _z30 - h * _beta3 * fal(e, 0.25, 0.05);
+	float z1k = _z10 + _h * (_z20 - _beta1 * e);
+	float z2k = _z20 + _h * (_z30  - _beta2 * fal(e, 0.5, 0.05)); // + _b0 * u
+	float z3k = _z30 - _h * _beta3 * fal(e, 0.25, 0.05);
 	_z10 = z1k;
 	_z20 = z2k;
 	_z30 = z3k;

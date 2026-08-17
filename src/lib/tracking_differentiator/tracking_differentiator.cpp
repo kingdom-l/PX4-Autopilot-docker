@@ -45,6 +45,10 @@ TrackingDifferentiator::TrackingDifferentiator(float h, float r0, float h0) :
 
 void TrackingDifferentiator::update(float input)
 {
+	if(!PX4_ISFINITE(_x1_pre) || !PX4_ISFINITE(_x2_pre)){
+		_x1_pre = 0.0f;
+		_x2_pre = 0.0f;
+	}
 
 	float x1k = _x1_pre + _h * _x2_pre;
 	float x2k = _x2_pre + _h * fhan(_x1_pre - input, _x2_pre, _r0, _h0);

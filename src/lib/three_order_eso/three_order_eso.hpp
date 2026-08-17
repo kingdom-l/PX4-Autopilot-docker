@@ -44,10 +44,10 @@
 class ThreeOrderEso
 {
 public:
-	ThreeOrderEso(float beta1, float beta2, float beta3);
+	ThreeOrderEso(float b0, float beta1, float beta2, float beta3, float h);
 	~ThreeOrderEso() = default;
 
-	void update(float u, float y, float b);
+	void update(float u, float y);
 
 	float getStateEst() const{
 		return _z10;
@@ -62,10 +62,12 @@ public:
 		return _z30;
 	}
 
-	void set_params(float beta1, float beta2, float beta3){
+	void set_params(float b0, float beta1, float beta2, float beta3, float h){
+		_b0 = b0;
 		_beta1 = beta1;
 		_beta2 = beta2;
 		_beta3 = beta3;
+		_h = h;
 	}
 
 
@@ -79,8 +81,10 @@ private:
 	float _z20;
 	float _z30;
 
+	float _b0;
 	float _beta1;
 	float _beta2;
 	float _beta3;
+	float _h;
 
 };

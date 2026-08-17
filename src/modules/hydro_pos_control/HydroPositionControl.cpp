@@ -216,22 +216,22 @@ HydroPositionControl::Run()
 		// ****** 测试TD ******
 		// 使用TD估计速度，并发布debug_value消息，在mavlink inspector显示
 		// ****** 2024-1231注释 ****** // 20250527问题：在位置为0时，速度估计有值()
-		_pos_x_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
-		_pos_x_td.update(_debug_vec.x);
-		_vx_hat = _pos_x_td.getDerivative();
-		_px_hat = _pos_x_td.getSmoothedSignal();
+		// _pos_x_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
+		// _pos_x_td.update(_debug_vec.x);
+		// _vx_hat = _pos_x_td.getDerivative();
+		// _px_hat = _pos_x_td.getSmoothedSignal();
 		// printf("pos_x: %f %f %f\n", (double)_debug_vec.x, (double)_px_hat, (double)_vx_hat);
 
-		_pos_y_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
-		_pos_y_td.update(_debug_vec.y);
-		_vy_hat = _pos_y_td.getDerivative();
-		_py_hat = _pos_y_td.getSmoothedSignal();
+		// _pos_y_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
+		// _pos_y_td.update(_debug_vec.y);
+		// _vy_hat = _pos_y_td.getDerivative();
+		// _py_hat = _pos_y_td.getSmoothedSignal();
 		// printf("pos_y: %f %f %f\n", (double)_debug_vec.y, (double)_py_hat, (double)_vy_hat);
 
-		_pos_z_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
-		_pos_z_td.update(_debug_vec.z);
-		_vz_hat = _pos_z_td.getDerivative();
-		_pz_hat = _pos_z_td.getSmoothedSignal();
+		// _pos_z_td.set_params(_param_hy_pos_td_h.get(), _param_hy_pos_td_r0.get(), _param_hy_pos_td_h0.get());
+		// _pos_z_td.update(_debug_vec.z);
+		// _vz_hat = _pos_z_td.getDerivative();
+		// _pz_hat = _pos_z_td.getSmoothedSignal();
 		// printf("pos_z: %f %f %f\n", (double)_debug_vec.z, (double)_pz_hat, (double)_vz_hat);
 
 
@@ -249,57 +249,11 @@ HydroPositionControl::Run()
 
 		// ****** 测试TD ******
 
-		// ****** 速度控制 ******
-		//_Va_hat = sqrtf(_vx_hat * _vx_hat + _vy_hat * _vy_hat + _vz_hat * _vz_hat);
+		/************ 获得速度和深度信息 ************/
+		//_Va_hat = sqrtf(_vx_hat * _vx_hat + _vy_hat * _vy_hat + _vz_hat * _vz_hat); // TD估计的速度
 		// _Va_hat = sqrtf(_vx_hat * _vx_hat + _vy_hat * _vy_hat);
 		_Va_hat = sqrtf(_posx_derivate.vel * _posx_derivate.vel + _posy_derivate.vel * _posy_derivate.vel);
 		float Va_sp = _param_hy_va_sp.get();
-		_Va_e = Va_sp - _Va_hat;
-		float ve_a = _param_hy_ve_a.get();
-		float ve_b = _param_hy_ve_b.get();
-		if(std::fabs(_Va_e) <= ve_a){
-			_Va_e_i = _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt + _Va_e_i;
-		}
-		else if(std::fabs(_Va_e) <= (ve_a + ve_b))
-		{
-			_Va_e_i = _Va_e_i + _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt * (ve_b - std::fabs(_Va_e) + ve_a) / ve_b;
-		}
-		else
-		{
-			_Va_e_i = 0.f;
-		}
-		_Va_e_pre = _Va_e;
-		// 积分限幅
-		_Va_e_i = math::constrain(_Va_e_i, -_param_hy_ve_ilimit.get(), _param_hy_ve_ilimit.get());
-		float resolution = _param_hy_ve_res.get();
-		float fx_sp_slope = _param_hy_vfx_sp_slope.get();
-		float fx_sp = _param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp; //总输出
-		fx_sp = math::constrain(fx_sp, -fx_sp_slope, fx_sp_slope);
-		//总输出限幅
-		if(fx_sp >= 0)
-		{
-			fx_sp = resolution + fx_sp / fx_sp_slope * (1 - resolution);
-		}
-		else
-		{
-			fx_sp = resolution + fx_sp / fx_sp_slope * resolution;
-		}
-		// float fx_sp = math::constrain(_param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp, 0.f, _param_hy_va_lim.get());  // [0, 1]
-
-		// if(std::fabs(_param_hy_va_i.get()) > 1e-6f){
-
-		// 	float fx_sp_unsat = _param_hy_va_p.get() * _Va_e + _param_hy_va_i.get() * _Va_e_i;
-		// 	_Va_e_i = _Va_e_i + dt/(_param_hy_va_i.get()) * (fx_sp - fx_sp_unsat);
-		// 	printf("h va p:%f i:%f\n", (double)(_param_hy_va_p.get() * _Va_e), (double)(_param_hy_va_i.get() * _Va_e_i));
-
-		// }
-		// printf("pos: %f %f %f\n", (double)_px_hat, (double)_py_hat, (double)_pz_hat);
-		// printf("h vel: %f %f %f %f %f %f\n", (double)_vx_hat, (double)_vy_hat, (double)_vz_hat, (double)_Va_hat, (double)_Va_e, (double)_Va_e_i);
-
-		// ****** 速度控制 ******
-
-
-		const matrix::Eulerf euler_angles(_R);
 
 		// ****** 订阅动捕测量的深度信息，仅单个维度(高度) ******
 		// struct debug_key_value_s debug_value;
@@ -312,17 +266,6 @@ HydroPositionControl::Run()
 		float depth = _debug_vec.z; // depth遵循水平面以上为正，水平面以下为负
 		// ****** 2024-1231注释 ******
 
-		// ****** 测试高度环ESO ****** 2024-1231注释
-		// _depth_eso.set_params(_param_hy_d_eso_b0.get(), _param_hy_d_eso_beta1.get(), _param_hy_d_eso_beta2.get());
-		// _depth_eso.update(euler_angles.theta(), depth);
-
-		// _pos_sp.timestamp = hrt_absolute_time();
-		// _pos_sp.x = depth;
-		// _pos_sp.y = _depth_eso.getStateEst(); // 判断一下高度环ESO的状态估计
-		// _pos_sp.z = _depth_eso.getTotalDisturbance(); // 判断一下高度环ESO的扰动估计
-		// _vehicle_local_pos_sp_pub.publish(_pos_sp);
-		// ****** 测试高度环ESO ******
-
 		// ****** 订阅深度计的深度信息 ******
 		// _depth_estimated_sub.update(&_depth_estimated);
 		// float depth = -_depth_estimated.depth_estimated;
@@ -330,72 +273,163 @@ HydroPositionControl::Run()
 		// ****** 订阅深度计的深度信息 ******
 
 		float depth_sp = _param_hy_depth_sp.get(); // 遵循海平面以上为正，海平面以下为负
-		float vel_fb = _param_hy_velfb_p.get() * _Va_e;
-		// depth_sp = 0.6f;
 
-		// ****** 深度误差 ******
- 		_depth_e = (depth_sp - depth);
-		// ****** 深度误差 ******
+		/************ 获得速度和深度信息 ************/
 
-		// ****** ******
-		// float pitch_sp_sat = math::constrain(_param_hy_dep_p.get()*_depth_e+_param_hy_dep_i.get()*_depth_e_i+_param_hy_dep_ff.get(), -radians(_param_hy_p_lim.get()), radians(_param_hy_p_lim.get()));
-		// if(std::fabs(_param_hy_dep_i.get()) > 1e-6f){
+		if(_param_hy_depva_pid_en.get()){
 
-		// 	float pitch_sp_unsat = _param_hy_dep_p.get()*_depth_e+_param_hy_dep_i.get()*_depth_e_i;
-		// 	_depth_e_i = _depth_e_i + dt/(_param_hy_dep_i.get()) * (pitch_sp_sat - pitch_sp_unsat);
-		// }
-		// ****** ******
+			/************ 速度PID控制 ************/
+			_Va_e = Va_sp - _Va_hat;
+			float ve_a = _param_hy_ve_a.get();
+			float ve_b = _param_hy_ve_b.get();
+			if(std::fabs(_Va_e) <= ve_a){
+				_Va_e_i = _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt + _Va_e_i;
+			}
+			else if(std::fabs(_Va_e) <= (ve_a + ve_b))
+			{
+				_Va_e_i = _Va_e_i + _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt * (ve_b - std::fabs(_Va_e) + ve_a) / ve_b;
+			}
+			else
+			{
+				_Va_e_i = 0.f;
+			}
+			_Va_e_pre = _Va_e;
+			// 积分限幅
+			_Va_e_i = math::constrain(_Va_e_i, -_param_hy_ve_ilimit.get(), _param_hy_ve_ilimit.get());
+			float resolution = _param_hy_ve_res.get();
+			float fx_sp_slope = _param_hy_vfx_sp_slope.get();
+			// float fx_sp = _param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp; //总输出
+			_fx_sp = math::constrain(_param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp, -fx_sp_slope, fx_sp_slope);
+			//总输出限幅
+			if(_fx_sp >= 0)
+			{
+				_fx_sp = resolution + _fx_sp / fx_sp_slope * (1 - resolution);
+			}
+			else
+			{
+				_fx_sp = resolution + _fx_sp / fx_sp_slope * resolution;
+			}
+			/************ 速度PID控制 ************/
 
-		// ****** anti-windup ******
-		float de_a = _param_hy_de_a.get();
-		float de_b = _param_hy_de_b.get();
-		if(std::fabs(_depth_e) <= de_a){
-			_depth_e_i = _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt + _depth_e_i;
+			/************ 深度PID控制 ************/
+			float vel_fb = _param_hy_velfb_p.get() * _Va_e;
+
+			// ****** 深度误差 ******
+			_depth_e = (depth_sp - depth);
+			// ****** 深度误差 ******
+
+			// ****** anti-windup ******
+			float de_a = _param_hy_de_a.get();
+			float de_b = _param_hy_de_b.get();
+			if(std::fabs(_depth_e) <= de_a){
+				_depth_e_i = _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt + _depth_e_i;
+			}
+			else if(std::fabs(_depth_e) <= (de_a + de_b))
+			{
+				_depth_e_i = _depth_e_i + _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt * (de_b - std::fabs(_depth_e) + de_a) / de_b;
+			}
+			else
+			{
+				_depth_e_i = 0.f;
+			}
+			_depth_e_pre = _depth_e;
+			// 积分限幅
+			_depth_e_i = math::constrain(_depth_e_i, -_param_hy_de_ilimit.get(), _param_hy_de_ilimit.get());
+			// ****** anti-windup ******
+
+			_fz_sp = math::constrain(_param_hy_dep_p.get() * _depth_e + vel_fb + _depth_e_i - _param_hy_dep_ff.get(), -_param_hy_dep_lim.get(), _param_hy_dep_lim.get());
+			/************ 深度PID控制 ************/
+
+			// ****** 发布速度和深度曲线 ******
+			// _pos_sp.timestamp = hrt_absolute_time();
+			// _pos_sp.x = Va_sp;
+			// _pos_sp.y = _Va_hat;
+			// _pos_sp.z = _Va_e;
+			// _pos_sp.vx = _Va_e_i;
+			// _pos_sp.vy = _fx_sp;
+			// _pos_sp.vz = depth_sp;
+			// _pos_sp.acceleration[0] = depth;
+			// _pos_sp.acceleration[1] = _depth_e;
+			// _pos_sp.acceleration[2] = _depth_e_i;
+			// _pos_sp.yaw = _fz_sp;
+			// _vehicle_local_pos_sp_pub.publish(_pos_sp);
+			// ****** 发布速度和深度曲线 ******
+
+			// _pos_z_lpf.set_cutoff_frequency(_param_hy_dep_samfreq.get(), _param_hy_dep_cutfreq.get());
+			// float depth_lpf = _pos_z_lpf.apply(depth);
+
+			_vel_eso.set_params(1.f/_param_hy_v_eso_b0_inv.get(), _param_hy_v_eso_beta1.get(), _param_hy_v_eso_beta2.get(), _param_hy_v_eso_h.get());
+			_vel_eso.update(_fx_sp, _Va_hat);
+
+			_depth_eso.set_params(1.f/_param_hy_d_eso_b0_inv.get(), _param_hy_d_eso_beta1.get(), _param_hy_d_eso_beta2.get(), _param_hy_d_eso_beta3.get(), _param_hy_d_eso_h.get());
+			_depth_eso.update(_fz_sp, depth);
+			// ****** 测试速度和高度环ESO ****** 2024-1231注释
+			_pos_sp.timestamp = hrt_absolute_time();
+			_pos_sp.x = _Va_hat;
+			_pos_sp.y = _vel_eso.getStateEst();
+			_pos_sp.z = _vel_eso.getTotalDisturbance();
+			_pos_sp.vx = _fx_sp;
+			_pos_sp.vy = depth;
+			_pos_sp.vz = _depth_eso.getStateEst(); // 判断一下高度环ESO的状态估计
+			_pos_sp.acceleration[0] = _posz_derivate.vel;
+			_pos_sp.acceleration[1] = _depth_eso.getStateDotEst(); // 判断一下高度环ESO的扰动估计
+			_pos_sp.acceleration[2] = _depth_eso.getTotalDisturbance();
+			_pos_sp.yaw = _fz_sp;
+			_vehicle_local_pos_sp_pub.publish(_pos_sp);
+			// ****** 测试高度环ESO ******
+
+		}else{
+			float vel_b0_inv = _param_hy_v_eso_b0_inv.get(), dep_b0_inv = _param_hy_d_eso_b0_inv.get();
+
+			_vel_eso.set_params(1.f / vel_b0_inv, _param_hy_v_eso_beta1.get(), _param_hy_v_eso_beta2.get(), _param_hy_v_eso_h.get());
+			_vel_eso.update(_fx_sp, _Va_hat);
+
+			_depth_eso.set_params(1.f / dep_b0_inv, _param_hy_d_eso_beta1.get(), _param_hy_d_eso_beta2.get(), _param_hy_d_eso_beta3.get(), _param_hy_d_eso_h.get());
+			_depth_eso.update(_fz_sp, depth);
+
+
+			float resolution = _param_hy_ve_res_adrc.get();
+			float fx_sp_slope = _param_hy_vfx_sp_slpadrc.get();
+			_fx_sp = math::constrain((_param_hy_va_adrc_p.get() * (Va_sp - _Va_hat) - _vel_eso.getTotalDisturbance() + _param_hy_va_ff_adrc.get() * Va_sp) * vel_b0_inv, -fx_sp_slope, fx_sp_slope);
+			//总输出限幅
+			if(_fx_sp >= 0)
+			{
+				_fx_sp = resolution + _fx_sp / fx_sp_slope * (1 - resolution);
+			}
+			else
+			{
+				_fx_sp = resolution + _fx_sp / fx_sp_slope * resolution;
+			}
+			// fx_sp = math::constrain(_param_hy_va_adrc_p.get() * (Va_sp - _Va_hat) - _vel_eso.getTotalDisturbance() * vel_b0_inv, -_param_hy_va_adrc_lim.get(), _param_hy_va_adrc_lim.get());
+
+			_fz_sp = math::constrain(_param_hy_dep_adrc_p.get() * (depth_sp - depth) - _param_hy_dep_adrc_d.get() * _depth_eso.getStateDotEst() - _depth_eso.getTotalDisturbance() * _param_hy_dep_kcomp_eso.get() * dep_b0_inv - _param_hy_dep_ff_adrc.get(), -_param_hy_dep_lim_adrc.get(), _param_hy_dep_lim_adrc.get());
+
+			// ****** 测试速度和高度环ESO ****** 2024-1231注释
+			_pos_sp.timestamp = hrt_absolute_time();
+			_pos_sp.x = _Va_hat;
+			_pos_sp.y = _vel_eso.getStateEst();
+			_pos_sp.z = _vel_eso.getTotalDisturbance();
+			_pos_sp.vx = _fx_sp;
+			_pos_sp.vy = depth;
+			_pos_sp.vz = _depth_eso.getStateEst(); // 判断一下高度环ESO的状态估计
+			_pos_sp.acceleration[0] = _depth_eso.getStateDotEst();
+			_pos_sp.acceleration[1] = _depth_eso.getTotalDisturbance(); // 判断一下高度环ESO的扰动估计
+			_pos_sp.acceleration[2] = _fz_sp;
+			_pos_sp.yaw = Va_sp;
+			_pos_sp.yawspeed = depth_sp;
+			_vehicle_local_pos_sp_pub.publish(_pos_sp);
+			// ****** 测试高度环ESO ******
 		}
-		else if(std::fabs(_depth_e) <= (de_a + de_b))
-		{
-			_depth_e_i = _depth_e_i + _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt * (de_b - std::fabs(_depth_e) + de_a) / de_b;
-		}
-		else
-		{
-			_depth_e_i = 0.f;
-		}
-		_depth_e_pre = _depth_e;
-		// 积分限幅
-		_depth_e_i = math::constrain(_depth_e_i, -_param_hy_de_ilimit.get(), _param_hy_de_ilimit.get());
-		// ****** anti-windup ******
-
-		float fz_sp = math::constrain(_param_hy_dep_p.get() * _depth_e + vel_fb + _depth_e_i - _param_hy_dep_ff.get(), -_param_hy_dep_lim.get(), _param_hy_dep_lim.get());
 
 		_manual_control_setpoint_sub.update(&_manual_control_setpoint);
+		const matrix::Eulerf euler_angles(_R);
 		vehicle_attitude_setpoint_s att_sp{};
 		att_sp.timestamp = hrt_absolute_time();
 		att_sp.roll_body = _manual_control_setpoint.roll * radians(_param_hy_d_rmax.get()); // rad roll的手动控制反应很慢
 		att_sp.pitch_body = 0; //-_manual_control_setpoint.pitch * radians(_param_hy_d_pmax.get());// rad
 		att_sp.yaw_body = euler_angles.psi();
-		att_sp.thrust_body[0] = fx_sp; // 最大油门量为1
-		att_sp.thrust_body[2] = fz_sp;
-		// if(std::fabs(_param_hy_dep_i.get()) > 1e-6f){
-
-		// 	float thrust_bodyz_unsat = _param_hy_dep_p.get()*_depth_e + _depth_e_i - _param_hy_dep_ff.get() ;
-		// 	_depth_e_i = _depth_e_i + dt/(_param_hy_dep_i.get()) * (att_sp.thrust_body[2] - thrust_bodyz_unsat);
-
-		// }
-
-		// ****** 发布速度和深度曲线 ******
-		_pos_sp.timestamp = hrt_absolute_time();
-		_pos_sp.x = Va_sp;
-		_pos_sp.y = _Va_hat;
-		_pos_sp.z = _Va_e;
-		_pos_sp.vx = _Va_e_i;
-		_pos_sp.vy = fx_sp;
-		_pos_sp.vz = depth_sp;
-		_pos_sp.acceleration[0] = depth;
-		_pos_sp.acceleration[1] = _depth_e;
-		_pos_sp.acceleration[2] = _depth_e_i;
-		_pos_sp.yaw = fz_sp;
-		_vehicle_local_pos_sp_pub.publish(_pos_sp);
-		// ****** 发布速度和深度曲线 ******
+		att_sp.thrust_body[0] = _fx_sp; // 最大油门量为1
+		att_sp.thrust_body[2] = _fz_sp;
 
 		// ****** 显示TD估计结果 ******
 		// _pos_sp.timestamp = hrt_absolute_time();

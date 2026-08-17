@@ -37,10 +37,11 @@
 #include "two_order_eso.hpp"
 
 
-TwoOrderEso::TwoOrderEso(float b0, float beta1, float beta2) :
+TwoOrderEso::TwoOrderEso(float b0, float beta1, float beta2, float h) :
 	_b0(b0),
 	_beta1(beta1),
-	_beta2(beta2)
+	_beta2(beta2),
+	_h(h)
 {
 	// _beta1 = 100.f;
 	// _beta2 = 300.f;
@@ -50,12 +51,16 @@ TwoOrderEso::TwoOrderEso(float b0, float beta1, float beta2) :
 
 void TwoOrderEso::update(float u, float y)
 {
+	if(!PX4_ISFINITE(_z10) || !PX4_ISFINITE(_z20)){
+		_z10 = 0.0f;
+		_z20 = 0.0f;
+	}
 
-	float h = 0.01;
+	// float h = 0.01;
 	float e = _z10 - y;
 
-	float z1k = _z10 + h * (_z20 + _b0 * u - _beta1 * e);
-	float z2k = _z20 - h * _beta2 * fal(e, 0.5, 0.05);
+	float z1k = _z10 + _h * (_z20 + _b0 * u - _beta1 * e);
+	float z2k = _z20 - _h * _beta2 * fal(e, 0.5, 0.05);
 	_z10 = z1k;
 	_z20 = z2k;
 

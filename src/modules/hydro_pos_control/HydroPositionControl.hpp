@@ -171,12 +171,12 @@ private:
 	hrt_abstime _last_run{0};
 	matrix::Dcmf _R{matrix::eye<float, 3>()};
 
-	TwoOrderEso _depth_eso{5.0f, 100, 300};
-	// ThreeOrderEso _depth_eso1{100, 300, 1000};
-	TrackingDifferentiator _pos_x_td{0.01, 100, 0.07};
-	TrackingDifferentiator _pos_y_td{0.01, 100, 0.07};
-	TrackingDifferentiator _pos_z_td{0.01, 100, 0.07};
-	math::LowPassFilter2p<float> _pos_x_lpf{800.f, 40.f};
+	TwoOrderEso _vel_eso{2.3f, 100, 300, 0.008};
+	ThreeOrderEso _depth_eso{2.3f, 100, 300, 1000, 0.008};
+	// TrackingDifferentiator _pos_x_td{0.01, 100, 0.07};
+	// TrackingDifferentiator _pos_y_td{0.01, 100, 0.07};
+	// TrackingDifferentiator _pos_z_td{0.01, 100, 0.07};
+	math::LowPassFilter2p<float> _pos_x_lpf{800.f, 40.f}, _pos_z_lpf{800.f, 40.f};
 	float _vx_hat = 0.f, _px_hat = 0.f, _vy_hat = 0.f, _py_hat = 0.f, _vz_hat = 0.f, _pz_hat = 0.f;
 	float _Va_hat = 0.f;
 	// Eigen::MatrixXf _mat(3, 3);
@@ -186,6 +186,7 @@ private:
 	float _depth_e = 0.f, _depth_e_i = 0.f;
 	float _depth_e_pre = 0.f;
 	float _Va_e = 0.f, _Va_e_pre = 0.f, _Va_e_i = 0.f;
+	float _fx_sp = 0., _fz_sp = 0.;
 
 	hrt_abstime _time_now{0};
 	time_derivative_t _posx_derivate = {0}, _posy_derivate = {0}, _posz_derivate = {0};
@@ -217,7 +218,6 @@ private:
 		(ParamFloat<px4::params::HY_VA_P>) _param_hy_va_p,
 		(ParamFloat<px4::params::HY_VA_I>) _param_hy_va_i,
 		(ParamFloat<px4::params::HY_VA_FF>) _param_hy_va_ff,
-		(ParamFloat<px4::params::HY_VA_LIM>) _param_hy_va_lim,
 		(ParamFloat<px4::params::HY_VA_SP>) _param_hy_va_sp,
 		(ParamFloat<px4::params::HY_VE_RES>) _param_hy_ve_res,
 		(ParamFloat<px4::params::HY_VFX_SP_SLOPE>) _param_hy_vfx_sp_slope,
@@ -230,10 +230,28 @@ private:
 		(ParamFloat<px4::params::HY_POS_TD_H>) _param_hy_pos_td_h,
 		(ParamFloat<px4::params::HY_POS_TD_R0>) _param_hy_pos_td_r0,
 		(ParamFloat<px4::params::HY_POS_TD_H0>) _param_hy_pos_td_h0,
+		(ParamFloat<px4::params::HY_DEP_SAMFREQ>) _param_hy_dep_samfreq,
+		(ParamFloat<px4::params::HY_DEP_CUTFREQ>) _param_hy_dep_cutfreq,
 		(ParamFloat<px4::params::HY_D_ESO_BETA1>) _param_hy_d_eso_beta1,
 		(ParamFloat<px4::params::HY_D_ESO_BETA2>) _param_hy_d_eso_beta2,
-		(ParamFloat<px4::params::HY_D_ESO_B0>) _param_hy_d_eso_b0
-
+		(ParamFloat<px4::params::HY_D_ESO_BETA3>) _param_hy_d_eso_beta3,
+		(ParamFloat<px4::params::HY_D_ESO_B0_INV>) _param_hy_d_eso_b0_inv,
+		(ParamFloat<px4::params::HY_DEP_ADRC_P>) _param_hy_dep_adrc_p,
+		(ParamFloat<px4::params::HY_DEP_ADRC_D>) _param_hy_dep_adrc_d,
+		(ParamFloat<px4::params::HY_DEP_FF_ADRC>) _param_hy_dep_ff_adrc,
+		(ParamFloat<px4::params::HY_DEP_KCOMP_ESO>) _param_hy_dep_kcomp_eso,
+		(ParamFloat<px4::params::HY_DEP_LIM_ADRC>) _param_hy_dep_lim_adrc,
+		(ParamFloat<px4::params::HY_V_ESO_BETA1>) _param_hy_v_eso_beta1,
+		(ParamFloat<px4::params::HY_V_ESO_BETA2>) _param_hy_v_eso_beta2,
+		(ParamFloat<px4::params::HY_V_ESO_B0_INV>) _param_hy_v_eso_b0_inv,
+		(ParamFloat<px4::params::HY_VA_ADRC_P>) _param_hy_va_adrc_p,
+		(ParamFloat<px4::params::HY_VA_FF_ADRC>) _param_hy_va_ff_adrc,
+		(ParamFloat<px4::params::HY_VA_ADRC_LIM>) _param_hy_va_adrc_lim,
+		(ParamFloat<px4::params::HY_VE_RES_ADRC>) _param_hy_ve_res_adrc,
+		(ParamFloat<px4::params::HY_VFX_SLPADRC>) _param_hy_vfx_sp_slpadrc,
+		(ParamBool<px4::params::HY_DEPVA_PID_EN>) _param_hy_depva_pid_en,
+		(ParamFloat<px4::params::HY_D_ESO_H>) _param_hy_d_eso_h,
+		(ParamFloat<px4::params::HY_V_ESO_H>) _param_hy_v_eso_h
 	)
 
 };

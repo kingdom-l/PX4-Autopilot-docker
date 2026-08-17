@@ -81,12 +81,12 @@ PARAM_DEFINE_FLOAT(HY_DEP_FF, 0.0f);
  *
  * @unit
  * @min 0
- * @max 15
+ * @max 20
  * @decimal 2
  * @increment 0.05
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_DEP_LIM, 5.0f);
+PARAM_DEFINE_FLOAT(HY_DEP_LIM, 16.0f);
 
 /**
  * Maximum pitch angle for manual control setpoint
@@ -206,19 +206,6 @@ PARAM_DEFINE_FLOAT(HY_VA_I, 0.0f);
  * @group Hydro Position Control
  */
 PARAM_DEFINE_FLOAT(HY_VA_FF, 0.153f);
-
-/**
- * Max x-axis force for the vel control output.
- *
- *
- * @unit
- * @min 0
- * @max 1
- * @decimal 2
- * @increment 0.05
- * @group Hydro Position Control
- */
-PARAM_DEFINE_FLOAT(HY_VA_LIM, 1.0f);
 
 /**
  * Hydro Va setpoint
@@ -399,17 +386,263 @@ PARAM_DEFINE_FLOAT(HY_D_ESO_BETA1, 100.f);
  * @increment 1
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_D_ESO_BETA2, 300.f);
+PARAM_DEFINE_FLOAT(HY_D_ESO_BETA2, 280.f);
 
 /**
- * Hydro depth eso params b0
+ * Hydro depth eso params beta3
+ *
+ *
+ * @unit
+ * @min 10.0
+ * @max 10000
+ * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_D_ESO_BETA3, 900.f);
+
+/**
+ * Hydro depth eso params b0 backwards
+ *
+ * b0 = 1/HY_D_ESO_B0_INV
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 2
+ * @increment 0.1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_D_ESO_B0_INV, 2.3f);
+
+/**
+ * Hydro depth eso params h
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.001
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_D_ESO_H, 0.008f);
+
+/**
+ * Hydro high adrc proportional gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 600
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_ADRC_P, 0.08f);
+
+/**
+ * Hydro high adrc derivative gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_ADRC_D, 0.0f);
+
+/**
+ * Hydro high adrc feedforward gain.
  *
  *
  * @unit
  * @min 0.0
  * @max 10
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_FF_ADRC, 1.f);
+
+/**
+ * Hydro high eso total disturbance comp factor.
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_KCOMP_ESO, 1.f);
+
+/**
+ * Max z-axis force for the depth adrc control output.
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 15
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_LIM_ADRC, 10.0f);
+
+/**
+ * Hydro vel eso params beta1
+ *
+ *
+ * @unit
+ * @min 10.0
+ * @max 600.0
  * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_V_ESO_BETA1, 100.f);
+
+/**
+ * Hydro vel eso params beta2
+ *
+ *
+ * @unit
+ * @min 10.0
+ * @max 1000
+ * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_V_ESO_BETA2, 300.f);
+
+/**
+ * Hydro vel eso params b0 backwards
+ *
+ * b0 = 1/HY_V_ESO_B0_INV
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 2
  * @increment 0.1
  * @group Hydro Position Control
  */
-PARAM_DEFINE_FLOAT(HY_D_ESO_B0, 5.f);
+PARAM_DEFINE_FLOAT(HY_V_ESO_B0_INV, 2.3f);
+
+/**
+ * Hydro vel eso params h
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1
+ * @decimal 3
+ * @increment 0.001
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_V_ESO_H, 0.008f);
+
+/**
+ * Hydro vel adrc proportional gain.
+ *
+ * @unit
+ * @min 0.0
+ * @max 0.5
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_ADRC_P, 0.08f);
+
+/**
+ * Hydro vel adrc feedforward gain.
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 10
+ * @decimal 3
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_FF_ADRC, 2.f);
+
+/**
+ * Max x-axis force for the vel adrc control output.
+ *
+ *
+ * @unit
+ * @min 0
+ * @max 1
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VA_ADRC_LIM, 1.0f);
+
+/**
+ * Hydro vel adrc controller resolution
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VE_RES_ADRC, 0.05f);
+
+/**
+ * Hydro vel adrc controller output 1/slope
+ *
+ *
+ * @unit
+ * @min 0.0
+ * @max 5000.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_VFX_SLPADRC, 300.0f);
+
+/**
+ * Enable ADRC for Depth and Vel
+ *
+ * Enable when using PID for Depth and Vel
+ * Disable when using ADRC for Depth and Vel
+ *
+ * @boolean
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_INT32(HY_DEPVA_PID_EN, 1);
+
+/**
+ * Hydro depth lowpass filter params
+ *
+ * cutoff_freq < sample_freq / 2
+ *
+ * @unit
+ * @min 10.0
+ * @max 1000
+ * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_SAMFREQ, 800.f);
+
+/**
+ * Hydro depth lowpass filter params
+ *
+ * cutoff_freq < sample_freq / 2
+ *
+ * @unit
+ * @min 10.0
+ * @max 1000
+ * @decimal 1
+ * @increment 1
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DEP_CUTFREQ, 40.f);
