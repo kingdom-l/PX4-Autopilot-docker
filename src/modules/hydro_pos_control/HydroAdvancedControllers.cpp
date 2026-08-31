@@ -38,52 +38,81 @@
 
 void HrpPredictor::reset()
 {
-	for (uint8_t row = 0; row < MaxWindow; ++row) {
-		for (uint8_t column = 0; column < FeatureCount; ++column) {
+	for (uint8_t row = 0; row < WindowLength; ++row) {
+		for (uint8_t column = 0; column < MaxFeatureCount; ++column) {
 			_features[row][column] = 0.f;
 		}
 
 		_targets[row] = 0.f;
 	}
 
-	for (uint8_t i = 0; i < FeatureCount; ++i) {
+	for (uint8_t i = 0; i < MaxFeatureCount; ++i) {
 		_theta[i] = 0.f;
 	}
 
-	for (uint8_t i = 0; i < FeatureCount - 1; ++i) {
-		_mean[i] = 0.f;
-		_scale[i] = 1.f;
-	}
-
 	_confidence = 0.f;
+	_prediction_error_power = 0.f;
+	_residual_mean = 0.f;
+	_residual_power = 0.f;
+	_last_prediction = 0.f;
 	_head = 0;
 	_count = 0;
-	_samples_since_fit = 0;
 	_model_valid = false;
+	_prediction_pending = false;
+	_statistics_ready = false;
 }
 
 void HrpPredictor::configure(const Config &config)
 {
-	_config.window = math::constrain(config.window, static_cast<uint8_t>(1), MaxWindow);
-	_config.min_samples = math::constrain(config.min_samples, static_cast<uint8_t>(1), _config.window);
-	_config.fit_decimation = math::constrain(config.fit_decimation, static_cast<uint8_t>(1), MaxWindow);
+	_config.feature_count = math::constrain(config.feature_count, static_cast<uint8_t>(1), MaxFeatureCount);
 	_config.forgetting_factor = math::constrain(config.forgetting_factor, 0.5f, 1.f);
 	_config.ridge = math::max(config.ridge, 1e-7f);
 	_config.prediction_limit = math::max(config.prediction_limit, 0.f);
+	_config.noise_sigma = math::max(config.noise_sigma, 0.f);
 }
 
-uint8_t HrpPredictor::chronologicalIndex(uint8_t sample, uint8_t used_count) const
+uint8_t HrpPredictor::chronologicalIndex(uint8_t sample) const
 {
-	return (_head + MaxWindow - used_count + sample) % MaxWindow;
+	// fit() is called only for a full window; _head then points to the oldest row.
+	return (_head + sample) % WindowLength;
 }
 
-void HrpPredictor::addSample(const float feature[FeatureCount], float target)
+void HrpPredictor::addSample(const float feature[MaxFeatureCount], float target, float reliability_forgetting)
 {
 	if (!PX4_ISFINITE(target)) {
 		return;
 	}
 
-	for (uint8_t i = 0; i < FeatureCount; ++i) {
+	// The target available now realizes the one-step-ahead prediction issued
+	// on the preceding update. This is the causal reliability calculation used
+	// by the current MATLAB implementation; it deliberately does not use the
+	// regression window's in-sample fitting error.
+	if (_prediction_pending) {
+		const float lambda = math::constrain(reliability_forgetting, 0.f, 1.f);
+		const float one_minus_lambda = 1.f - lambda;
+		const float prediction_error = target - _last_prediction;
+		const float residual_mean_old = _residual_mean;
+		_prediction_error_power = lambda * _prediction_error_power
+					  + one_minus_lambda * prediction_error * prediction_error;
+		_residual_mean = lambda * _residual_mean + one_minus_lambda * target;
+		const float centered_residual = target - residual_mean_old;
+		_residual_power = lambda * _residual_power
+				  + one_minus_lambda * centered_residual * centered_residual;
+		_statistics_ready = true;
+		_prediction_pending = false;
+
+		const float noise_variance = _config.noise_sigma * _config.noise_sigma;
+		const float signal_energy = _residual_power + noise_variance;
+		const float denominator = signal_energy + _prediction_error_power;
+		_confidence = denominator > 1e-12f ? math::constrain(signal_energy / denominator, 0.f, 1.f) : 0.f;
+
+		if (!PX4_ISFINITE(_confidence)) {
+			_confidence = 0.f;
+			_statistics_ready = false;
+		}
+	}
+
+	for (uint8_t i = 0; i < _config.feature_count; ++i) {
 		if (!PX4_ISFINITE(feature[i])) {
 			return;
 		}
@@ -91,151 +120,105 @@ void HrpPredictor::addSample(const float feature[FeatureCount], float target)
 		_features[_head][i] = feature[i];
 	}
 
-	_targets[_head] = target;
-	_head = (_head + 1) % MaxWindow;
-	_count = math::min(static_cast<uint8_t>(_count + 1), MaxWindow);
-	_samples_since_fit++;
+	for (uint8_t i = _config.feature_count; i < MaxFeatureCount; ++i) {
+		_features[_head][i] = 0.f;
+	}
 
-	if (sampleCount() >= _config.min_samples && _samples_since_fit >= _config.fit_decimation) {
+	_targets[_head] = target;
+	_head = (_head + 1) % WindowLength;
+	_count = math::min(static_cast<uint8_t>(_count + 1), WindowLength);
+
+	if (_count >= WindowLength) {
 		fit();
-		_samples_since_fit = 0;
 	}
 }
 
-float HrpPredictor::predict(const float feature[FeatureCount]) const
+float HrpPredictor::predict(const float feature[MaxFeatureCount])
 {
 	if (!_model_valid) {
+		_prediction_pending = false;
 		return 0.f;
 	}
 
-	float prediction = _theta[0];
+	float prediction = 0.f;
 
-	for (uint8_t i = 1; i < FeatureCount; ++i) {
+	for (uint8_t i = 0; i < _config.feature_count; ++i) {
 		if (!PX4_ISFINITE(feature[i])) {
+			_prediction_pending = false;
 			return 0.f;
 		}
 
-		prediction += _theta[i] * (feature[i] - _mean[i - 1]) / _scale[i - 1];
+		prediction += _theta[i] * feature[i];
 	}
 
 	if (!PX4_ISFINITE(prediction)) {
+		_prediction_pending = false;
 		return 0.f;
 	}
 
-	return math::constrain(prediction, -_config.prediction_limit, _config.prediction_limit);
+	_last_prediction = math::constrain(prediction, -_config.prediction_limit, _config.prediction_limit);
+	_prediction_pending = true;
+	return _last_prediction;
 }
 
 void HrpPredictor::fit()
 {
-	const uint8_t used_count = sampleCount();
-
-	if (used_count < _config.min_samples) {
+	if (_count < WindowLength) {
 		_model_valid = false;
-		_confidence = 0.f;
 		return;
 	}
 
-	for (uint8_t feature = 1; feature < FeatureCount; ++feature) {
-		float sum = 0.f;
+	float normal[MaxFeatureCount][MaxFeatureCount]{};
+	float rhs[MaxFeatureCount]{};
+	float weight = 1.f;
 
-		for (uint8_t sample = 0; sample < used_count; ++sample) {
-			sum += _features[chronologicalIndex(sample, used_count)][feature];
-		}
-
-		_mean[feature - 1] = sum / static_cast<float>(used_count);
-		float variance_sum = 0.f;
-
-		for (uint8_t sample = 0; sample < used_count; ++sample) {
-			const float centered = _features[chronologicalIndex(sample, used_count)][feature] - _mean[feature - 1];
-			variance_sum += centered * centered;
-		}
-
-		_scale[feature - 1] = sqrtf(variance_sum / math::max(static_cast<float>(used_count - 1), 1.f));
-
-		if (!PX4_ISFINITE(_scale[feature - 1]) || _scale[feature - 1] < 1e-6f) {
-			_scale[feature - 1] = 1.f;
-		}
+	// Avoid powf() in the control loop. M is fixed and small, so nine
+	// multiplications produce exactly forgetting_factor^(M-1).
+	for (uint8_t i = 1; i < WindowLength; ++i) {
+		weight *= _config.forgetting_factor;
 	}
 
-	float normal[FeatureCount][FeatureCount]{};
-	float rhs[FeatureCount]{};
-	float weight = powf(_config.forgetting_factor, static_cast<float>(used_count - 1));
-	float weight_sum = 0.f;
-	float weighted_target_sum = 0.f;
+	for (uint8_t sample = 0; sample < WindowLength; ++sample) {
+		const uint8_t index = chronologicalIndex(sample);
 
-	for (uint8_t sample = 0; sample < used_count; ++sample) {
-		const uint8_t index = chronologicalIndex(sample, used_count);
-		float normalized[FeatureCount] {1.f};
+		for (uint8_t row = 0; row < _config.feature_count; ++row) {
+			rhs[row] += weight * _features[index][row] * _targets[index];
 
-		for (uint8_t feature = 1; feature < FeatureCount; ++feature) {
-			normalized[feature] = (_features[index][feature] - _mean[feature - 1]) / _scale[feature - 1];
-		}
-
-		for (uint8_t row = 0; row < FeatureCount; ++row) {
-			rhs[row] += weight * normalized[row] * _targets[index];
-
-			for (uint8_t column = 0; column < FeatureCount; ++column) {
-				normal[row][column] += weight * normalized[row] * normalized[column];
+			for (uint8_t column = 0; column < _config.feature_count; ++column) {
+				normal[row][column] += weight * _features[index][row] * _features[index][column];
 			}
 		}
 
-		weight_sum += weight;
-		weighted_target_sum += weight * _targets[index];
 		weight /= _config.forgetting_factor;
 	}
 
-	for (uint8_t i = 0; i < FeatureCount; ++i) {
+	for (uint8_t i = 0; i < _config.feature_count; ++i) {
 		normal[i][i] += _config.ridge;
+	}
+
+	for (uint8_t i = 0; i < MaxFeatureCount; ++i) {
+		_theta[i] = 0.f;
 	}
 
 	float condition_proxy = FLT_MAX;
 
-	if (!solveCholesky(normal, rhs, _theta, condition_proxy) || condition_proxy > 1e8f) {
+	if (!solveCholesky(normal, rhs, _theta, _config.feature_count, condition_proxy) || condition_proxy > 1e8f) {
 		_model_valid = false;
-		_confidence = 0.f;
 		return;
 	}
 
-	const float target_mean = weighted_target_sum / math::max(weight_sum, 1e-6f);
-	float weighted_error_sum = 0.f;
-	float weighted_target_variance = 0.f;
-	weight = powf(_config.forgetting_factor, static_cast<float>(used_count - 1));
-
-	for (uint8_t sample = 0; sample < used_count; ++sample) {
-		const uint8_t index = chronologicalIndex(sample, used_count);
-		float fitted = _theta[0];
-
-		for (uint8_t feature = 1; feature < FeatureCount; ++feature) {
-			fitted += _theta[feature] * (_features[index][feature] - _mean[feature - 1]) / _scale[feature - 1];
-		}
-
-		const float error = _targets[index] - fitted;
-		const float target_centered = _targets[index] - target_mean;
-		weighted_error_sum += weight * error * error;
-		weighted_target_variance += weight * target_centered * target_centered;
-		weight /= _config.forgetting_factor;
-	}
-
-	const float rmse = sqrtf(weighted_error_sum / math::max(weight_sum, 1e-6f));
-	const float target_scale = math::max(sqrtf(weighted_target_variance / math::max(weight_sum, 1e-6f)), 1e-3f);
-	const float confidence_ramp = math::min(1.f,
-				      static_cast<float>(used_count - _config.min_samples + 1) / 10.f);
-	_confidence = confidence_ramp / (1.f + rmse / target_scale);
-	_model_valid = PX4_ISFINITE(_confidence);
-
-	if (!_model_valid) {
-		_confidence = 0.f;
-	}
+	_model_valid = true;
 }
 
-bool HrpPredictor::solveCholesky(float matrix[FeatureCount][FeatureCount], const float rhs[FeatureCount],
-				 float solution[FeatureCount], float &condition_proxy) const
+bool HrpPredictor::solveCholesky(float matrix[MaxFeatureCount][MaxFeatureCount],
+				 const float rhs[MaxFeatureCount], float solution[MaxFeatureCount],
+				 uint8_t feature_count, float &condition_proxy) const
 {
-	float lower[FeatureCount][FeatureCount]{};
+	float lower[MaxFeatureCount][MaxFeatureCount]{};
 	float minimum_diagonal = FLT_MAX;
 	float maximum_diagonal = 0.f;
 
-	for (uint8_t row = 0; row < FeatureCount; ++row) {
+	for (uint8_t row = 0; row < feature_count; ++row) {
 		for (uint8_t column = 0; column <= row; ++column) {
 			float sum = matrix[row][column];
 
@@ -258,9 +241,9 @@ bool HrpPredictor::solveCholesky(float matrix[FeatureCount][FeatureCount], const
 		}
 	}
 
-	float intermediate[FeatureCount]{};
+	float intermediate[MaxFeatureCount]{};
 
-	for (uint8_t row = 0; row < FeatureCount; ++row) {
+	for (uint8_t row = 0; row < feature_count; ++row) {
 		float sum = rhs[row];
 
 		for (uint8_t column = 0; column < row; ++column) {
@@ -270,10 +253,10 @@ bool HrpPredictor::solveCholesky(float matrix[FeatureCount][FeatureCount], const
 		intermediate[row] = sum / lower[row][row];
 	}
 
-	for (int row = FeatureCount - 1; row >= 0; --row) {
+	for (int row = static_cast<int>(feature_count) - 1; row >= 0; --row) {
 		float sum = intermediate[row];
 
-		for (uint8_t column = row + 1; column < FeatureCount; ++column) {
+		for (uint8_t column = static_cast<uint8_t>(row + 1); column < feature_count; ++column) {
 			sum -= lower[column][row] * solution[column];
 		}
 
@@ -298,8 +281,10 @@ void EadrcHrpController::reset(float depth_error, float depth_error_rate, float 
 	_depth_z3 = 0.f;
 	_velocity_z1 = velocity_error;
 	_velocity_z2 = 0.f;
+	_depth_error_previous = depth_error;
 	_depth_error_rate_previous = depth_error_rate;
 	_velocity_error_previous = velocity_error;
+	_depth_rate_state_previous = depth_error_rate;
 	_depth_disturbance_previous = 0.f;
 	_velocity_disturbance_previous = 0.f;
 	_depth_force_previous = 0.f;
@@ -312,6 +297,8 @@ void EadrcHrpController::reset(float depth_error, float depth_error_rate, float 
 	_velocity_residual_2 = 0.f;
 	_depth_prediction = 0.f;
 	_velocity_prediction = 0.f;
+	_depth_residual_history_count = 0;
+	_velocity_residual_history_count = 0;
 	_elapsed = 0.f;
 	_initialized = true;
 }
@@ -398,15 +385,35 @@ EadrcHrpController::Output EadrcHrpController::update(float dt, float depth_erro
 	_depth_residual = residual_filter * _depth_residual + (1.f - residual_filter) * depth_residual_raw;
 	_velocity_residual = residual_filter * _velocity_residual + (1.f - residual_filter) * velocity_residual_raw;
 
-	const float depth_feature[HrpPredictor::FeatureCount] {
-		1.f, _depth_residual_1, _depth_residual_2, depth_error, _depth_z2
+	// The freshly reconstructed residual belongs to the preceding sample
+	// because it uses the preceding applied force and ESO disturbance. Pair it
+	// with that sample's error/observer state, then predict the current residual
+	// using the two newest residuals. This reproduces the MATLAB j=k-1 ordering.
+	const float confidence_time_constant = math::max(params.confidence_time_constant, 1e-3f);
+	const float reliability_forgetting = expf(-dt / confidence_time_constant);
+
+	if (_depth_residual_history_count >= 2) {
+		const float depth_training_feature[HrpPredictor::MaxFeatureCount] {
+			1.f, _depth_residual_1, _depth_residual_2, _depth_error_previous, _depth_rate_state_previous
+		};
+		_depth_predictor.addSample(depth_training_feature, _depth_residual, reliability_forgetting);
+	}
+
+	if (_velocity_residual_history_count >= 2) {
+		const float velocity_training_feature[HrpPredictor::MaxFeatureCount] {
+			1.f, _velocity_residual_1, _velocity_residual_2, _velocity_error_previous, 0.f
+		};
+		_velocity_predictor.addSample(velocity_training_feature, _velocity_residual, reliability_forgetting);
+	}
+
+	const float depth_prediction_feature[HrpPredictor::MaxFeatureCount] {
+		1.f, _depth_residual, _depth_residual_1, depth_error, _depth_z2
 	};
-	const float velocity_error_rate_estimate = _velocity_z2 - velocity_b0 * _velocity_force_previous;
-	const float velocity_feature[HrpPredictor::FeatureCount] {
-		1.f, _velocity_residual_1, _velocity_residual_2, velocity_error, velocity_error_rate_estimate
+	const float velocity_prediction_feature[HrpPredictor::MaxFeatureCount] {
+		1.f, _velocity_residual, _velocity_residual_1, velocity_error, 0.f
 	};
-	_depth_prediction = _depth_predictor.predict(depth_feature);
-	_velocity_prediction = _velocity_predictor.predict(velocity_feature);
+	_depth_prediction = _depth_predictor.predict(depth_prediction_feature);
+	_velocity_prediction = _velocity_predictor.predict(velocity_prediction_feature);
 
 	_elapsed += dt;
 	const float ramp = params.compensation_ramp_time > 1e-4f ?
@@ -426,8 +433,8 @@ EadrcHrpController::Output EadrcHrpController::update(float dt, float depth_erro
 	// Reuse HY_HR_RAMP as an enable ramp for the complete control command.
 	// This removes the arming step while keeping the raw Kp/Kd output available
 	// for the disarmed static-parameter diagnostic in HydroPositionControl.
-	output.fz_force = depth_base + ramp * depth_robust_compensation;
-	output.fx_force = velocity_base + ramp * velocity_robust_compensation;
+	output.fz_force = ramp * (depth_base + depth_robust_compensation);
+	output.fx_force = ramp * (velocity_base + velocity_robust_compensation);
 	output.fz_force = math::constrain(output.fz_force, -fabsf(params.depth_force_limit),
 			  fabsf(params.depth_force_limit));
 	output.fx_force = math::constrain(output.fx_force, 0.f,
@@ -438,14 +445,18 @@ EadrcHrpController::Output EadrcHrpController::update(float dt, float depth_erro
 		return {};
 	}
 
-	_depth_predictor.addSample(depth_feature, _depth_residual);
-	_velocity_predictor.addSample(velocity_feature, _velocity_residual);
 	_depth_residual_2 = _depth_residual_1;
 	_depth_residual_1 = _depth_residual;
 	_velocity_residual_2 = _velocity_residual_1;
 	_velocity_residual_1 = _velocity_residual;
+	_depth_residual_history_count = math::min(static_cast<uint8_t>(_depth_residual_history_count + 1),
+						 static_cast<uint8_t>(2));
+	_velocity_residual_history_count = math::min(static_cast<uint8_t>(_velocity_residual_history_count + 1),
+						    static_cast<uint8_t>(2));
+	_depth_error_previous = depth_error;
 	_depth_error_rate_previous = depth_error_rate;
 	_velocity_error_previous = velocity_error;
+	_depth_rate_state_previous = _depth_z2;
 	_depth_disturbance_previous = _depth_z3;
 	_velocity_disturbance_previous = _velocity_z2;
 	return output;

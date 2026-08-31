@@ -411,22 +411,21 @@ HydroPositionControl::Run()
 			params.depth_alpha = _param_hy_hr_d_alp.get();
 			params.velocity_alpha = _param_hy_hr_v_alp.get();
 			params.residual_lpf = _param_hy_hr_rlpf.get();
+			params.confidence_time_constant = _param_hy_hr_c_tc.get();
 			params.compensation_ramp_time = _param_hy_hr_ramp.get();
 			params.depth_feedforward = _param_hy_hr_dep_ff.get();
 			params.velocity_feedforward = _param_hy_hr_va_ff.get() * Va_sp;
 			params.depth_force_limit = _param_hy_dep_lim_adrc.get();
 			params.velocity_force_limit = maximum_forward_force;
-			params.depth_predictor.window = static_cast<uint8_t>(math::constrain<int32_t>(_param_hy_hr_win.get(), 1,
-							HrpPredictor::MaxWindow));
-			params.depth_predictor.min_samples = static_cast<uint8_t>(math::constrain<int32_t>(_param_hy_hr_min.get(), 1,
-							HrpPredictor::MaxWindow));
-			params.depth_predictor.fit_decimation = static_cast<uint8_t>(math::constrain<int32_t>(_param_hy_hr_decim.get(), 1,
-							HrpPredictor::MaxWindow));
+			params.depth_predictor.feature_count = HrpPredictor::DepthFeatureCount;
 			params.depth_predictor.forgetting_factor = _param_hy_hr_forget.get();
 			params.depth_predictor.ridge = _param_hy_hr_ridge.get();
 			params.depth_predictor.prediction_limit = _param_hy_hr_d_rlim.get();
+			params.depth_predictor.noise_sigma = _param_hy_hr_d_sig.get();
 			params.velocity_predictor = params.depth_predictor;
+			params.velocity_predictor.feature_count = HrpPredictor::VelocityFeatureCount;
 			params.velocity_predictor.prediction_limit = _param_hy_hr_v_rlim.get();
+			params.velocity_predictor.noise_sigma = _param_hy_hr_v_sig.get();
 
 			// The basic Kp/Kd controller is always evaluated so its unsaturated
 			// output can be inspected while the vehicle is stationary.

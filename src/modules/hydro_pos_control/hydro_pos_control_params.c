@@ -786,37 +786,7 @@ PARAM_DEFINE_FLOAT(HY_HR_D_ALP, 0.f);
  */
 PARAM_DEFINE_FLOAT(HY_HR_V_ALP, 0.f);
 
-/**
- * HRP history window length
- *
- * The fixed-memory implementation supports at most 40 samples.
- *
- * @min 5
- * @max 40
- * @group Hydro eADRC-HRP
- */
-PARAM_DEFINE_INT32(HY_HR_WIN, 30);
 
-/**
- * HRP minimum samples
- *
- * @min 5
- * @max 40
- * @group Hydro eADRC-HRP
- */
-PARAM_DEFINE_INT32(HY_HR_MIN, 30);
-
-/**
- * HRP regression fit decimation
- *
- * A value of 5 refits once per five new residual samples and holds the
- * coefficients between fits.
- *
- * @min 1
- * @max 20
- * @group Hydro eADRC-HRP
- */
-PARAM_DEFINE_INT32(HY_HR_DECIM, 5);
 
 /**
  * HRP forgetting factor
@@ -864,7 +834,7 @@ PARAM_DEFINE_FLOAT(HY_HR_RLPF, 0.95f);
  * @increment 0.1
  * @group Hydro eADRC-HRP
  */
-PARAM_DEFINE_FLOAT(HY_HR_D_RLIM, 1.f);
+PARAM_DEFINE_FLOAT(HY_HR_D_RLIM, 8.f);
 
 /**
  * HRP velocity residual prediction limit
@@ -876,7 +846,49 @@ PARAM_DEFINE_FLOAT(HY_HR_D_RLIM, 1.f);
  * @increment 0.1
  * @group Hydro eADRC-HRP
  */
-PARAM_DEFINE_FLOAT(HY_HR_V_RLIM, 0.5f);
+PARAM_DEFINE_FLOAT(HY_HR_V_RLIM, 4.f);
+
+/**
+ * HRP depth residual noise standard deviation
+ *
+ * Used only by the causal prediction-confidence calculation.
+ *
+ * @unit m/s^2
+ * @min 0
+ * @max 10
+ * @decimal 3
+ * @increment 0.01
+ * @group Hydro eADRC-HRP
+ */
+PARAM_DEFINE_FLOAT(HY_HR_D_SIG, 0.05f);
+
+/**
+ * HRP velocity residual noise standard deviation
+ *
+ * Used only by the causal prediction-confidence calculation.
+ *
+ * @unit m/s^2
+ * @min 0
+ * @max 10
+ * @decimal 3
+ * @increment 0.01
+ * @group Hydro eADRC-HRP
+ */
+PARAM_DEFINE_FLOAT(HY_HR_V_SIG, 0.02f);
+
+/**
+ * HRP confidence memory time constant
+ *
+ * The causal reliability forgetting factor is exp(-dt/HY_HR_C_TC).
+ *
+ * @unit s
+ * @min 0.01
+ * @max 10
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro eADRC-HRP
+ */
+PARAM_DEFINE_FLOAT(HY_HR_C_TC, 0.40f);
 
 /**
  * HRP observer compensation ramp time

@@ -48,43 +48,47 @@
 class HrpPredictor
 {
 public:
-	static constexpr uint8_t MaxWindow = 40;
-	static constexpr uint8_t FeatureCount = 5;
+	static constexpr uint8_t WindowLength = 10;
+	static constexpr uint8_t MaxFeatureCount = 5;
+	static constexpr uint8_t DepthFeatureCount = 5;
+	static constexpr uint8_t VelocityFeatureCount = 4;
 
 	struct Config {
-		uint8_t window{40};
-		uint8_t min_samples{30};
-		uint8_t fit_decimation{5};
+		uint8_t feature_count{DepthFeatureCount};
 		float forgetting_factor{0.99f};
 		float ridge{1e-2f};
-		float prediction_limit{1.f};
+		float prediction_limit{8.f};
+		float noise_sigma{0.05f};
 	};
 
 	void reset();
 	void configure(const Config &config);
-	void addSample(const float feature[FeatureCount], float target);
-	float predict(const float feature[FeatureCount]) const;
+	void addSample(const float feature[MaxFeatureCount], float target, float reliability_forgetting);
+	float predict(const float feature[MaxFeatureCount]);
 
-	float confidence() const { return _confidence; }
-	uint8_t sampleCount() const { return math::min(_count, _config.window); }
+	float confidence() const { return _statistics_ready ? _confidence : 0.f; }
+	uint8_t sampleCount() const { return _count; }
 
 private:
 	void fit();
-	bool solveCholesky(float matrix[FeatureCount][FeatureCount], const float rhs[FeatureCount],
-			   float solution[FeatureCount], float &condition_proxy) const;
-	uint8_t chronologicalIndex(uint8_t sample, uint8_t used_count) const;
+	bool solveCholesky(float matrix[MaxFeatureCount][MaxFeatureCount], const float rhs[MaxFeatureCount],
+			   float solution[MaxFeatureCount], uint8_t feature_count, float &condition_proxy) const;
+	uint8_t chronologicalIndex(uint8_t sample) const;
 
 	Config _config{};
-	float _features[MaxWindow][FeatureCount]{};
-	float _targets[MaxWindow]{};
-	float _theta[FeatureCount]{};
-	float _mean[FeatureCount - 1]{};
-	float _scale[FeatureCount - 1] {1.f, 1.f, 1.f, 1.f};
+	float _features[WindowLength][MaxFeatureCount]{};
+	float _targets[WindowLength]{};
+	float _theta[MaxFeatureCount]{};
 	float _confidence{0.f};
+	float _prediction_error_power{0.f};
+	float _residual_mean{0.f};
+	float _residual_power{0.f};
+	float _last_prediction{0.f};
 	uint8_t _head{0};
 	uint8_t _count{0};
-	uint8_t _samples_since_fit{0};
 	bool _model_valid{false};
+	bool _prediction_pending{false};
+	bool _statistics_ready{false};
 };
 
 struct EadrcHrpParams {
@@ -98,13 +102,14 @@ struct EadrcHrpParams {
 	float depth_alpha{0.f};
 	float velocity_alpha{0.f};
 	float residual_lpf{0.95f};
-	float compensation_ramp_time{0.15f};
+	float confidence_time_constant{0.40f};
+	float compensation_ramp_time{0.5f};
 	float depth_feedforward{0.f};
 	float velocity_feedforward{0.f};
 	float depth_force_limit{16.f};
 	float velocity_force_limit{52.f};
 	HrpPredictor::Config depth_predictor{};
-	HrpPredictor::Config velocity_predictor{};
+	HrpPredictor::Config velocity_predictor{HrpPredictor::VelocityFeatureCount, 0.99f, 1e-2f, 4.f, 0.02f};
 };
 
 class EadrcHrpController
@@ -142,8 +147,10 @@ private:
 	float _depth_z3{0.f};
 	float _velocity_z1{0.f};
 	float _velocity_z2{0.f};
+	float _depth_error_previous{0.f};
 	float _depth_error_rate_previous{0.f};
 	float _velocity_error_previous{0.f};
+	float _depth_rate_state_previous{0.f};
 	float _depth_disturbance_previous{0.f};
 	float _velocity_disturbance_previous{0.f};
 	float _depth_force_previous{0.f};
@@ -156,6 +163,8 @@ private:
 	float _velocity_residual_2{0.f};
 	float _depth_prediction{0.f};
 	float _velocity_prediction{0.f};
+	uint8_t _depth_residual_history_count{0};
+	uint8_t _velocity_residual_history_count{0};
 	float _elapsed{0.f};
 	bool _initialized{false};
 };
