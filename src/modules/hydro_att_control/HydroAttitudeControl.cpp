@@ -299,7 +299,7 @@ void HydroAttitudeControl::Run()
 						_hy_rates_sp.yaw = math::constrain(_manual_control_setpoint.yaw * radians(_param_man_yr_max.get()),
 											-radians(_param_hy_y_rmax.get()), radians(_param_hy_y_rmax.get()));
 					}
-					printf("att roll sp:%f %f e:%f iout:%f %f rate_sp:%f\n", (double)_hy_att_sp.roll_body, (double)euler_angles.phi(), (double)(_hy_att_sp.roll_body - euler_angles.phi()), (double)_roll_pid.pid_get_iout(), (double)roll_output, (double)roll_body_rate_setpoint);
+					// printf("att roll sp:%f %f e:%f iout:%f %f rate_sp:%f\n", (double)_hy_att_sp.roll_body, (double)euler_angles.phi(), (double)(_hy_att_sp.roll_body - euler_angles.phi()), (double)_roll_pid.pid_get_iout(), (double)roll_output, (double)roll_body_rate_setpoint);
 					// printf("att pitch pid_out: %f %f %f %f\n", (double)euler_angles.theta(), (double)_pitch_pid.pid_get_iout(), (double)pitch_output, (double)pitch_body_rate_setpoint);
 					// printf("att th_sp: %f %f\n", (double)_hy_att_sp.thrust_body[0], (double)_hy_att_sp.thrust_body[2]);
 					// printf("att rate_sp: %f %f %f %f\n", (double)_hy_rates_sp.thrust_body[0], (double)_hy_rates_sp.thrust_body[2], (double)_hy_rates_sp.pitch, (double)_hy_rates_sp.yaw);

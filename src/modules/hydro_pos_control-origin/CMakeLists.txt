@@ -35,8 +35,6 @@ px4_add_module(
 	MODULE modules__hydro_pos_control
 	MAIN hydro_pos_control
 	SRCS
-		HydroAdvancedControllers.cpp
-		HydroAdvancedControllers.hpp
 		HydroPositionControl.cpp
 		HydroPositionControl.hpp
 	DEPENDS

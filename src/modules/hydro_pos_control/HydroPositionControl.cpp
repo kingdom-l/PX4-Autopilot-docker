@@ -87,6 +87,41 @@ float HydroPositionControl::saturate_function(float x, float max_value, float k,
 	return out;
 }
 
+float HydroPositionControl::mapForwardForceToThrottle(float force, float resolution, float force_scale) const
+{
+	const float safe_scale = math::max(fabsf(force_scale), 1e-3f);
+	const float constrained_force = math::constrain(force, -safe_scale, safe_scale);
+	const float constrained_resolution = math::constrain(resolution, 0.f, 1.f);
+
+	if (constrained_force >= 0.f) {
+		return constrained_resolution + constrained_force / safe_scale * (1.f - constrained_resolution);
+	}
+
+	return constrained_resolution + constrained_force / safe_scale * constrained_resolution;
+}
+
+float HydroPositionControl::mapPhysicalForwardForceToThrottle(float force, float resolution, float maximum_force) const
+{
+	if (!PX4_ISFINITE(force) || force <= 0.f) {
+		return 0.f;
+	}
+
+	const float throttle = math::constrain(force / math::max(maximum_force, 1e-3f), 0.f, 1.f);
+	return math::max(throttle, math::constrain(resolution, 0.f, 1.f));
+}
+
+void HydroPositionControl::resetControllerStates(int controller_mode, float depth_error, float depth_error_rate,
+		float velocity_error)
+{
+	_depth_e_i = 0.f;
+	_Va_e_i = 0.f;
+	_depth_e_pre = depth_error;
+	_Va_e_pre = velocity_error;
+	_eadrc_hrp.reset(depth_error, depth_error_rate, velocity_error);
+	_sact_plus.reset(velocity_error);
+	_controller_mode_previous = controller_mode;
+}
+
 
 /**
  * @brief 计算加速度
@@ -207,9 +242,10 @@ HydroPositionControl::Run()
 		// ****** 测试低通滤波器 ******
 
 		// ****** 测试位置对时间求导 ******
-		TimeDerivativeCalc(25, &_posx_derivate, (double)_debug_vec.x);
-		TimeDerivativeCalc(25, &_posy_derivate, (double)_debug_vec.y);
+		const bool vx_ready = TimeDerivativeCalc(25, &_posx_derivate, (double)_debug_vec.x);
+		const bool vy_ready = TimeDerivativeCalc(25, &_posy_derivate, (double)_debug_vec.y);
 		TimeDerivativeCalc(25, &_posz_derivate, (double)_debug_vec.z);
+		const bool derivative_ready = vx_ready && vy_ready;
 		// printf("ad %p %p %p\n", &_posx_derivate, &_posy_derivate, &_posz_derivate);
 		// ****** 测试位置对时间求导 ******
 
@@ -273,153 +309,300 @@ HydroPositionControl::Run()
 		// ****** 订阅深度计的深度信息 ******
 
 		float depth_sp = _param_hy_depth_sp.get(); // 遵循海平面以上为正，海平面以下为负
+		_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
+		_vehicle_status_sub.copy(&_vehicle_status);
 
 		/************ 获得速度和深度信息 ************/
+		// _Va_hat = 0; // 用于调试ESO是否饱和
+		_Va_e = Va_sp - _Va_hat;
+		_depth_e = depth_sp - depth;
+		const float depth_error_rate = -_posz_derivate.vel;
+		// const int controller_mode = math::constrain(_param_hy_depva_pid_en.get(), ControllerAdrc, ControllerSactPlus);
+		const int controller_mode = math::constrain<int32_t>(_param_hy_depva_pid_en.get(), ControllerAdrc, ControllerSactPlus);
 
-		if(_param_hy_depva_pid_en.get()){
+		if (controller_mode != _controller_mode_previous) {
+			resetControllerStates(controller_mode, _depth_e, depth_error_rate, _Va_e);
+			_eadrc_active = false;
+			_sact_active = false;
+		}
 
+		if (controller_mode == ControllerPid) {
 			/************ 速度PID控制 ************/
-			_Va_e = Va_sp - _Va_hat;
-			float ve_a = _param_hy_ve_a.get();
-			float ve_b = _param_hy_ve_b.get();
-			if(std::fabs(_Va_e) <= ve_a){
-				_Va_e_i = _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt + _Va_e_i;
-			}
-			else if(std::fabs(_Va_e) <= (ve_a + ve_b))
-			{
-				_Va_e_i = _Va_e_i + _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt * (ve_b - std::fabs(_Va_e) + ve_a) / ve_b;
-			}
-			else
-			{
+			const float ve_a = _param_hy_ve_a.get();
+			const float ve_b = math::max(_param_hy_ve_b.get(), 1e-4f);
+
+			if (fabsf(_Va_e) <= ve_a) {
+				_Va_e_i += _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt;
+
+			} else if (fabsf(_Va_e) <= ve_a + ve_b) {
+				_Va_e_i += _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt
+					   * (ve_b - fabsf(_Va_e) + ve_a) / ve_b;
+
+			} else {
 				_Va_e_i = 0.f;
 			}
+
 			_Va_e_pre = _Va_e;
-			// 积分限幅
 			_Va_e_i = math::constrain(_Va_e_i, -_param_hy_ve_ilimit.get(), _param_hy_ve_ilimit.get());
-			float resolution = _param_hy_ve_res.get();
-			float fx_sp_slope = _param_hy_vfx_sp_slope.get();
-			// float fx_sp = _param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp; //总输出
-			_fx_sp = math::constrain(_param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp, -fx_sp_slope, fx_sp_slope);
-			//总输出限幅
-			if(_fx_sp >= 0)
-			{
-				_fx_sp = resolution + _fx_sp / fx_sp_slope * (1 - resolution);
-			}
-			else
-			{
-				_fx_sp = resolution + _fx_sp / fx_sp_slope * resolution;
-			}
-			/************ 速度PID控制 ************/
+			const float fx_force = _param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp;
+			_fx_sp = mapForwardForceToThrottle(fx_force, _param_hy_ve_res.get(), _param_hy_vfx_sp_slope.get());
 
 			/************ 深度PID控制 ************/
-			float vel_fb = _param_hy_velfb_p.get() * _Va_e;
+			const float vel_fb = _param_hy_velfb_p.get() * _Va_e;
+			const float de_a = _param_hy_de_a.get();
+			const float de_b = math::max(_param_hy_de_b.get(), 1e-4f);
 
-			// ****** 深度误差 ******
-			_depth_e = (depth_sp - depth);
-			// ****** 深度误差 ******
+			if (fabsf(_depth_e) <= de_a) {
+				_depth_e_i += _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt;
 
-			// ****** anti-windup ******
-			float de_a = _param_hy_de_a.get();
-			float de_b = _param_hy_de_b.get();
-			if(std::fabs(_depth_e) <= de_a){
-				_depth_e_i = _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt + _depth_e_i;
-			}
-			else if(std::fabs(_depth_e) <= (de_a + de_b))
-			{
-				_depth_e_i = _depth_e_i + _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt * (de_b - std::fabs(_depth_e) + de_a) / de_b;
-			}
-			else
-			{
+			} else if (fabsf(_depth_e) <= de_a + de_b) {
+				_depth_e_i += _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt
+					      * (de_b - fabsf(_depth_e) + de_a) / de_b;
+
+			} else {
 				_depth_e_i = 0.f;
 			}
+
 			_depth_e_pre = _depth_e;
-			// 积分限幅
 			_depth_e_i = math::constrain(_depth_e_i, -_param_hy_de_ilimit.get(), _param_hy_de_ilimit.get());
-			// ****** anti-windup ******
+			_fz_sp = math::constrain(_param_hy_dep_p.get() * _depth_e + vel_fb + _depth_e_i
+						 - _param_hy_dep_ff.get(), -_param_hy_dep_lim.get(), _param_hy_dep_lim.get());
 
-			_fz_sp = math::constrain(_param_hy_dep_p.get() * _depth_e + vel_fb + _depth_e_i - _param_hy_dep_ff.get(), -_param_hy_dep_lim.get(), _param_hy_dep_lim.get());
-			/************ 深度PID控制 ************/
-
-			// ****** 发布速度和深度曲线 ******
-			// _pos_sp.timestamp = hrt_absolute_time();
-			// _pos_sp.x = Va_sp;
-			// _pos_sp.y = _Va_hat;
-			// _pos_sp.z = _Va_e;
-			// _pos_sp.vx = _Va_e_i;
-			// _pos_sp.vy = _fx_sp;
-			// _pos_sp.vz = depth_sp;
-			// _pos_sp.acceleration[0] = depth;
-			// _pos_sp.acceleration[1] = _depth_e;
-			// _pos_sp.acceleration[2] = _depth_e_i;
-			// _pos_sp.yaw = _fz_sp;
-			// _vehicle_local_pos_sp_pub.publish(_pos_sp);
-			// ****** 发布速度和深度曲线 ******
-
-			// _pos_z_lpf.set_cutoff_frequency(_param_hy_dep_samfreq.get(), _param_hy_dep_cutfreq.get());
-			// float depth_lpf = _pos_z_lpf.apply(depth);
-
-			_vel_eso.set_params(1.f/_param_hy_v_eso_b0_inv.get(), _param_hy_v_eso_beta1.get(), _param_hy_v_eso_beta2.get(), _param_hy_v_eso_h.get());
+			// Keep the legacy observers alive for PID diagnostics.
+			_vel_eso.set_params(1.f / _param_hy_v_eso_b0_inv.get(), _param_hy_v_eso_beta1.get(),
+					    _param_hy_v_eso_beta2.get(), _param_hy_v_eso_h.get());
 			_vel_eso.update(_fx_sp, _Va_hat);
-
-			_depth_eso.set_params(1.f/_param_hy_d_eso_b0_inv.get(), _param_hy_d_eso_beta1.get(), _param_hy_d_eso_beta2.get(), _param_hy_d_eso_beta3.get(), _param_hy_d_eso_h.get());
-			_depth_eso.update(_fz_sp, depth);
-			// ****** 测试速度和高度环ESO ****** 2024-1231注释
-			_pos_sp.timestamp = hrt_absolute_time();
-			_pos_sp.x = _Va_hat;
-			_pos_sp.y = _vel_eso.getStateEst();
-			_pos_sp.z = _vel_eso.getTotalDisturbance();
-			_pos_sp.vx = _fx_sp;
-			_pos_sp.vy = depth;
-			_pos_sp.vz = _depth_eso.getStateEst(); // 判断一下高度环ESO的状态估计
-			_pos_sp.acceleration[0] = _posz_derivate.vel;
-			_pos_sp.acceleration[1] = _depth_eso.getStateDotEst(); // 判断一下高度环ESO的扰动估计
-			_pos_sp.acceleration[2] = _depth_eso.getTotalDisturbance();
-			_pos_sp.yaw = _fz_sp;
-			_vehicle_local_pos_sp_pub.publish(_pos_sp);
-			// ****** 测试高度环ESO ******
-
-		}else{
-			float vel_b0_inv = _param_hy_v_eso_b0_inv.get(), dep_b0_inv = _param_hy_d_eso_b0_inv.get();
-
-			_vel_eso.set_params(1.f / vel_b0_inv, _param_hy_v_eso_beta1.get(), _param_hy_v_eso_beta2.get(), _param_hy_v_eso_h.get());
-			_vel_eso.update(_fx_sp, _Va_hat);
-
-			_depth_eso.set_params(1.f / dep_b0_inv, _param_hy_d_eso_beta1.get(), _param_hy_d_eso_beta2.get(), _param_hy_d_eso_beta3.get(), _param_hy_d_eso_h.get());
+			_depth_eso.set_params(1.f / _param_hy_d_eso_b0_inv.get(), _param_hy_d_eso_beta1.get(),
+					      _param_hy_d_eso_beta2.get(), _param_hy_d_eso_beta3.get(), _param_hy_d_eso_h.get());
 			_depth_eso.update(_fz_sp, depth);
 
+		} else if (controller_mode == ControllerAdrc) {
+			/************ 原PX4 ADRC控制 ************/
+			const float vel_b0_inv = math::max(_param_hy_v_eso_b0_inv.get(), 1e-3f);
+			const float dep_b0_inv = math::max(_param_hy_d_eso_b0_inv.get(), 1e-3f);
+			_vel_eso.set_params(1.f / vel_b0_inv, _param_hy_v_eso_beta1.get(), _param_hy_v_eso_beta2.get(),
+					    _param_hy_v_eso_h.get());
+			_vel_eso.update(_fx_sp, _Va_hat);
+			_depth_eso.set_params(1.f / dep_b0_inv, _param_hy_d_eso_beta1.get(), _param_hy_d_eso_beta2.get(),
+					      _param_hy_d_eso_beta3.get(), _param_hy_d_eso_h.get());
+			_depth_eso.update(_fz_sp, depth);
 
-			float resolution = _param_hy_ve_res_adrc.get();
-			float fx_sp_slope = _param_hy_vfx_sp_slpadrc.get();
-			_fx_sp = math::constrain((_param_hy_va_adrc_p.get() * (Va_sp - _Va_hat) - _vel_eso.getTotalDisturbance() + _param_hy_va_ff_adrc.get() * Va_sp) * vel_b0_inv, -fx_sp_slope, fx_sp_slope);
-			//总输出限幅
-			if(_fx_sp >= 0)
-			{
-				_fx_sp = resolution + _fx_sp / fx_sp_slope * (1 - resolution);
+			const float fx_force = (_param_hy_va_adrc_p.get() * _Va_e - _vel_eso.getTotalDisturbance()
+						+ _param_hy_va_ff_adrc.get() * Va_sp) * vel_b0_inv;
+			_fx_sp = mapForwardForceToThrottle(fx_force, _param_hy_ve_res_adrc.get(),
+						 _param_hy_vfx_sp_slpadrc.get());
+			_fz_sp = math::constrain(_param_hy_dep_adrc_p.get() * _depth_e
+						 - _param_hy_dep_adrc_d.get() * _depth_eso.getStateDotEst()
+						 - _depth_eso.getTotalDisturbance() * _param_hy_dep_kcomp_eso.get() * dep_b0_inv
+						 - _param_hy_dep_ff_adrc.get(), -_param_hy_dep_lim_adrc.get(),
+						 _param_hy_dep_lim_adrc.get());
+
+		} else if (controller_mode == ControllerEadrcHrp) {
+			/************ 轻量eADRC-HRP控制 ************/
+			const float maximum_forward_force = 2.f * math::max(_param_hy_thrust_max.get(), 1e-3f);
+			EadrcHrpParams params{};
+			params.depth_b0_inverse = _param_hy_hr_d_b0_inv.get();
+			params.velocity_b0_inverse = _param_hy_hr_v_b0_inv.get();
+			params.depth_kp = _param_hy_hr_d_kp.get();
+			params.depth_kd = _param_hy_hr_d_kd.get();
+			params.depth_observer_bandwidth = _param_hy_hr_d_wo.get();
+			params.velocity_kp = _param_hy_hr_v_kp.get();
+			params.velocity_observer_bandwidth = _param_hy_hr_v_wo.get();
+			params.depth_alpha = _param_hy_hr_d_alp.get();
+			params.velocity_alpha = _param_hy_hr_v_alp.get();
+			params.residual_lpf = _param_hy_hr_rlpf.get();
+			params.compensation_ramp_time = _param_hy_hr_ramp.get();
+			params.depth_feedforward = _param_hy_hr_dep_ff.get();
+			params.velocity_feedforward = _param_hy_hr_va_ff.get() * Va_sp;
+			params.depth_force_limit = _param_hy_dep_lim_adrc.get();
+			params.velocity_force_limit = maximum_forward_force;
+			params.depth_predictor.window = static_cast<uint8_t>(math::constrain<int32_t>(_param_hy_hr_win.get(), 1,
+							HrpPredictor::MaxWindow));
+			params.depth_predictor.min_samples = static_cast<uint8_t>(math::constrain<int32_t>(_param_hy_hr_min.get(), 1,
+							HrpPredictor::MaxWindow));
+			params.depth_predictor.fit_decimation = static_cast<uint8_t>(math::constrain<int32_t>(_param_hy_hr_decim.get(), 1,
+							HrpPredictor::MaxWindow));
+			params.depth_predictor.forgetting_factor = _param_hy_hr_forget.get();
+			params.depth_predictor.ridge = _param_hy_hr_ridge.get();
+			params.depth_predictor.prediction_limit = _param_hy_hr_d_rlim.get();
+			params.velocity_predictor = params.depth_predictor;
+			params.velocity_predictor.prediction_limit = _param_hy_hr_v_rlim.get();
+
+			// The basic Kp/Kd controller is always evaluated so its unsaturated
+			// output can be inspected while the vehicle is stationary.
+			const float fz_base_raw = params.depth_b0_inverse
+						  * (params.depth_kp * _depth_e + params.depth_kd * depth_error_rate)
+						  - params.depth_feedforward;
+			const float fx_base_raw = params.velocity_b0_inverse * params.velocity_kp * _Va_e
+						  + params.velocity_feedforward;
+			const float fz_utilization = fabsf(fz_base_raw)
+						     / math::max(fabsf(params.depth_force_limit), 1e-3f);
+			const float fx_utilization = fabsf(fx_base_raw)
+						     / math::max(fabsf(params.velocity_force_limit), 1e-3f);
+
+			const bool armed = _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED;
+			const bool emergency_throttle_cut = PX4_ISFINITE(_manual_control_setpoint.throttle)
+							    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
+			const bool eadrc_enable = armed && derivative_ready && !emergency_throttle_cut;
+
+			if (!eadrc_enable) {
+				// Do not update the ESO or HRP predictor without actuator authority.
+				// The raw Kp/Kd output remains available only as a diagnostic.
+				if (_eadrc_active) {
+					_eadrc_hrp.reset(_depth_e, depth_error_rate, _Va_e);
+				}
+
+				_eadrc_active = false;
+				_fx_sp = 0.f;
+				_fz_sp = 0.f;
+				_eadrc_hrp.setAppliedForces(0.f, 0.f);
+
+				_dbg_arr.timestamp = hrt_absolute_time();
+				_dbg_arr.id = 20;
+				_dbg_arr.data[0] = fx_base_raw;
+				_dbg_arr.data[1] = fz_base_raw;
+				_dbg_arr.data[2] = fx_utilization;
+				_dbg_arr.data[3] = fz_utilization;
+				_dbg_arr.data[4] = fx_utilization >= 1.f ? 1.f : 0.f;
+				_dbg_arr.data[5] = fz_utilization >= 1.f ? 1.f : 0.f;
+				orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
+
+			} else {
+				if (!_eadrc_active) {
+					// Align the observer with the current tracking error and clear all
+					// HRP samples before applying control.
+					_eadrc_hrp.reset(_depth_e, depth_error_rate, _Va_e);
+					_eadrc_active = true;
+				}
+
+				const EadrcHrpController::Output output =
+					_eadrc_hrp.update(dt, _depth_e, depth_error_rate, _Va_e, params);
+				_fz_sp = output.fz_force;
+				_fx_sp = math::constrain(output.fx_force / maximum_forward_force, 0.f, 1.f);
+				_eadrc_hrp.setAppliedForces(_fx_sp * maximum_forward_force, _fz_sp);
 			}
-			else
-			{
-				_fx_sp = resolution + _fx_sp / fx_sp_slope * resolution;
+
+		} else {
+			/************ 固定startup参数SACT+控制 ************/
+			const float maximum_forward_force = 2.f * math::max(_param_hy_thrust_max.get(), 1e-3f);
+			SactPlusParams params{};
+			params.depth_b0_inverse = _param_hy_sa_d_b0_inv.get();
+			params.velocity_b0_inverse = _param_hy_sa_v_b0_inv.get();
+			params.derivative_filter_time_constant = _param_hy_sa_der_tc.get();
+			params.compensation_ramp_time = _param_hy_sa_ramp.get();
+			params.depth_feedforward = _param_hy_sa_dep_ff.get();
+			params.velocity_feedforward = _param_hy_sa_va_ff.get() * Va_sp;
+			params.depth_force_limit = _param_hy_dep_lim_adrc.get();
+			params.velocity_force_limit = maximum_forward_force;
+			params.depth.proportional_scale = _param_hy_sa_d_sp.get();
+			params.depth.derivative_scale = _param_hy_sa_d_sd.get();
+			params.depth.proportional_boundary = _param_hy_sa_d_dp.get();
+			params.depth.derivative_boundary = _param_hy_sa_d_dd.get();
+			params.depth.proportional_exponent = _param_hy_sa_d_dlp.get();
+			params.depth.derivative_exponent = _param_hy_sa_d_dld.get();
+			params.depth.alpha1 = _param_hy_sa_d_a1.get();
+			params.depth.alpha2 = _param_hy_sa_d_a2.get();
+			params.depth.gamma = _param_hy_sa_d_gam.get();
+			params.depth.nominal_disturbance = _param_hy_sa_d_dnm.get();
+			params.depth.theta_limit = _param_hy_sa_d_tlm.get();
+			params.depth.lambda_limit = _param_hy_sa_d_llm.get();
+			params.velocity.proportional_scale = _param_hy_sa_v_sp.get();
+			params.velocity.derivative_scale = _param_hy_sa_v_sd.get();
+			params.velocity.proportional_boundary = _param_hy_sa_v_dp.get();
+			params.velocity.derivative_boundary = _param_hy_sa_v_dd.get();
+			params.velocity.proportional_exponent = _param_hy_sa_v_dlp.get();
+			params.velocity.derivative_exponent = _param_hy_sa_v_dld.get();
+			params.velocity.alpha1 = _param_hy_sa_v_a1.get();
+			params.velocity.alpha2 = _param_hy_sa_v_a2.get();
+			params.velocity.gamma = _param_hy_sa_v_gam.get();
+			params.velocity.nominal_disturbance = _param_hy_sa_v_dnm.get();
+			params.velocity.theta_limit = _param_hy_sa_v_tlm.get();
+			params.velocity.lambda_limit = _param_hy_sa_v_llm.get();
+
+			const bool armed = _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED;
+			const bool emergency_throttle_cut = PX4_ISFINITE(_manual_control_setpoint.throttle)
+							    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
+			const bool sact_enable = armed && derivative_ready && !emergency_throttle_cut;
+
+			if (!sact_enable) {
+				// Continue evaluating nonlinear PD and fixed feedforward for static
+				// diagnostics, but clear/freeze Lambda and Theta and command no force.
+				_sact_active = false;
+				const SactPlusController::Output base_output =
+					_sact_plus.update(dt, _depth_e, depth_error_rate, _Va_e, params, false);
+				_fx_sp = 0.f;
+				_fz_sp = 0.f;
+
+				const float fx_utilization = fabsf(base_output.fx_base_raw)
+							     / math::max(fabsf(params.velocity_force_limit), 1e-3f);
+				const float fz_utilization = fabsf(base_output.fz_base_raw)
+							     / math::max(fabsf(params.depth_force_limit), 1e-3f);
+				_dbg_arr.timestamp = hrt_absolute_time();
+				_dbg_arr.id = 21;
+				_dbg_arr.data[0] = base_output.fx_base_raw;
+				_dbg_arr.data[1] = base_output.fz_base_raw;
+				_dbg_arr.data[2] = fx_utilization;
+				_dbg_arr.data[3] = fz_utilization;
+				_dbg_arr.data[4] = fx_utilization >= 1.f ? 1.f : 0.f;
+				_dbg_arr.data[5] = fz_utilization >= 1.f ? 1.f : 0.f;
+				orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
+
+			} else {
+				if (!_sact_active) {
+					// Clear both adaptive channels on the enable edge while leaving
+					// the continuously evaluated nonlinear PD path intact.
+					_sact_plus.resetAdaptiveStates();
+					_sact_active = true;
+				}
+
+				const SactPlusController::Output output =
+					_sact_plus.update(dt, _depth_e, depth_error_rate, _Va_e, params, true);
+				_fz_sp = output.fz_force;
+				_fx_sp = mapPhysicalForwardForceToThrottle(output.fx_force, _param_hy_ve_res_adrc.get(),
+								 maximum_forward_force);
 			}
-			// fx_sp = math::constrain(_param_hy_va_adrc_p.get() * (Va_sp - _Va_hat) - _vel_eso.getTotalDisturbance() * vel_b0_inv, -_param_hy_va_adrc_lim.get(), _param_hy_va_adrc_lim.get());
-
-			_fz_sp = math::constrain(_param_hy_dep_adrc_p.get() * (depth_sp - depth) - _param_hy_dep_adrc_d.get() * _depth_eso.getStateDotEst() - _depth_eso.getTotalDisturbance() * _param_hy_dep_kcomp_eso.get() * dep_b0_inv - _param_hy_dep_ff_adrc.get(), -_param_hy_dep_lim_adrc.get(), _param_hy_dep_lim_adrc.get());
-
-			// ****** 测试速度和高度环ESO ****** 2024-1231注释
-			_pos_sp.timestamp = hrt_absolute_time();
-			_pos_sp.x = _Va_hat;
-			_pos_sp.y = _vel_eso.getStateEst();
-			_pos_sp.z = _vel_eso.getTotalDisturbance();
-			_pos_sp.vx = _fx_sp;
-			_pos_sp.vy = depth;
-			_pos_sp.vz = _depth_eso.getStateEst(); // 判断一下高度环ESO的状态估计
-			_pos_sp.acceleration[0] = _depth_eso.getStateDotEst();
-			_pos_sp.acceleration[1] = _depth_eso.getTotalDisturbance(); // 判断一下高度环ESO的扰动估计
-			_pos_sp.acceleration[2] = _fz_sp;
-			_pos_sp.yaw = Va_sp;
-			_pos_sp.yawspeed = depth_sp;
-			_vehicle_local_pos_sp_pub.publish(_pos_sp);
-			// ****** 测试高度环ESO ******
 		}
+
+		// Unified diagnostics. The output interface remains unchanged:
+		// thrust_body[0] is normalized throttle and thrust_body[2] is force in N.
+		_pos_sp.timestamp = hrt_absolute_time();
+		_pos_sp.x = _Va_hat;
+		_pos_sp.y = _fx_sp;
+		_pos_sp.z = depth;
+		_pos_sp.vx = _fz_sp;
+		_pos_sp.yawspeed = static_cast<float>(controller_mode);
+
+		if (controller_mode == ControllerEadrcHrp) {
+			_pos_sp.vy = _eadrc_hrp.velocityState();
+			_pos_sp.vz = _eadrc_hrp.velocityDisturbance();
+			_pos_sp.acceleration[0] = _eadrc_hrp.depthState();
+			_pos_sp.acceleration[1] = _eadrc_hrp.depthRateState();
+			_pos_sp.acceleration[2] = _eadrc_hrp.depthDisturbance();
+			_pos_sp.yaw = _eadrc_hrp.depthPrediction();
+
+		} else if (controller_mode == ControllerSactPlus) {
+			_pos_sp.vy = _sact_plus.velocityLambda();
+			_pos_sp.vz = _sact_plus.velocityTheta();
+			_pos_sp.acceleration[0] = _sact_plus.depthLambda();
+			_pos_sp.acceleration[1] = _sact_plus.depthTheta();
+			_pos_sp.acceleration[2] = _Va_e;
+			_pos_sp.yaw = _depth_e;
+
+		} else if (controller_mode == ControllerAdrc) {
+			_pos_sp.vy = _vel_eso.getStateEst();
+			_pos_sp.vz = _vel_eso.getTotalDisturbance();
+			_pos_sp.acceleration[0] = _depth_eso.getStateEst();
+			_pos_sp.acceleration[1] = _depth_eso.getStateDotEst();
+			_pos_sp.acceleration[2] = _depth_eso.getTotalDisturbance();
+			_pos_sp.yaw = _depth_e;
+		}else{
+			_pos_sp.vy = _Va_e;
+			_pos_sp.vz = _Va_e_i;
+			_pos_sp.acceleration[0] = _depth_e;
+			_pos_sp.acceleration[1] = _depth_e_i;
+		}
+
+		_vehicle_local_pos_sp_pub.publish(_pos_sp);
 
 		_manual_control_setpoint_sub.update(&_manual_control_setpoint);
 		const matrix::Eulerf euler_angles(_R);

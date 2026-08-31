@@ -349,7 +349,7 @@ void HydroRateControl::Run()
 			// _rate_pos_sp_pub.publish(_rate_pos_sp);
 			// ****** 调试角速率控制，与postion通道显示信息冲突 ******
 
-			printf("ratex sp:%f %f e:%f e_i:%f u_sp:%f\n", (double)_rates_sp.roll, (double)rates(0), (double)(_rates_sp.roll - rates(0)), (double)_ratex_pid.pid_get_iout(), (double)control_u(0));
+			// printf("ratex sp:%f %f e:%f e_i:%f u_sp:%f\n", (double)_rates_sp.roll, (double)rates(0), (double)(_rates_sp.roll - rates(0)), (double)_ratex_pid.pid_get_iout(), (double)control_u(0));
 			// printf("ratey sp:%f %f e:%f e_i:%f u_sp:%f\n", (double)_rates_sp.pitch, (double)rates(1), (double)(_rates_sp.pitch - rates(1)), (double)_ratey_pid.pid_get_iout(), (double)control_u(1));
 
 		} else { // MANUAL

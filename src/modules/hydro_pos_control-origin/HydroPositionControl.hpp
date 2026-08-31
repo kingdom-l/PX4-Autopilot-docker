@@ -96,8 +96,6 @@
 #include <lib/tracking_differentiator/tracking_differentiator.hpp>
 #include <lib/mathlib/math/filter/LowPassFilter2p.hpp>
 
-#include "HydroAdvancedControllers.hpp"
-
 
 // #include <lib/Eigen/Eigen.h>
 
@@ -146,12 +144,11 @@ private:
 
 	uORB::SubscriptionCallbackWorkItem _local_pos_sub{this, ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};
-	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _debug_vect_sub{ORB_ID(debug_vect)}; // 订阅动捕位置
 	// uORB::Subscription _debug_sub{ORB_ID(debug_key_value)}; // 订阅动捕高度
 	uORB::Subscription _depth_estimated_sub{ORB_ID(depth_estimated)}; // depth gauge
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
-	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	uORB::Publication<vehicle_attitude_setpoint_s>	_hy_att_sp_pub{ORB_ID(hy_vehicle_attitude_setpoint)};
 	uORB::Publication<vehicle_local_position_setpoint_s> _vehicle_local_pos_sp_pub{ORB_ID(vehicle_local_position_setpoint)};
@@ -169,8 +166,6 @@ private:
 	trajectory_setpoint_s _traj_sp{};
 	depth_estimated_s _depth_estimated{};
 	manual_control_setpoint_s _manual_control_setpoint{};
-	vehicle_status_s _vehicle_status{};
-
 
 	perf_counter_t _loop_perf; // loop performance counter
 	hrt_abstime _last_run{0};
@@ -208,20 +203,6 @@ private:
 	// int parameters_update();
 
 	float saturate_function(float x, float max_value, float k, float center);
-	float mapForwardForceToThrottle(float force, float resolution, float force_scale) const;
-	float mapPhysicalForwardForceToThrottle(float force, float resolution, float maximum_force) const;
-	void resetControllerStates(int controller_mode, float depth_error, float depth_error_rate, float velocity_error);
-
-	static constexpr int ControllerAdrc = 0;
-	static constexpr int ControllerPid = 1;
-	static constexpr int ControllerEadrcHrp = 2;
-	static constexpr int ControllerSactPlus = 3;
-
-	EadrcHrpController _eadrc_hrp{};
-	SactPlusController _sact_plus{};
-	int _controller_mode_previous{-1};
-	bool _eadrc_active{false};
-	bool _sact_active{false};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_DEP_P>) _param_hy_dep_p,
@@ -246,7 +227,6 @@ private:
 		(ParamFloat<px4::params::HY_DE_A>) _param_hy_de_a,
 		(ParamFloat<px4::params::HY_DE_B>) _param_hy_de_b,
 		(ParamFloat<px4::params::HY_DE_ILIMIT>) _param_hy_de_ilimit,
-
 		(ParamFloat<px4::params::HY_POS_TD_H>) _param_hy_pos_td_h,
 		(ParamFloat<px4::params::HY_POS_TD_R0>) _param_hy_pos_td_r0,
 		(ParamFloat<px4::params::HY_POS_TD_H0>) _param_hy_pos_td_h0,
@@ -269,62 +249,9 @@ private:
 		(ParamFloat<px4::params::HY_VA_ADRC_LIM>) _param_hy_va_adrc_lim,
 		(ParamFloat<px4::params::HY_VE_RES_ADRC>) _param_hy_ve_res_adrc,
 		(ParamFloat<px4::params::HY_VFX_SLPADRC>) _param_hy_vfx_sp_slpadrc,
-		(ParamInt<px4::params::HY_DEPVA_PID_EN>) _param_hy_depva_pid_en,
+		(ParamBool<px4::params::HY_DEPVA_PID_EN>) _param_hy_depva_pid_en,
 		(ParamFloat<px4::params::HY_D_ESO_H>) _param_hy_d_eso_h,
-		(ParamFloat<px4::params::HY_V_ESO_H>) _param_hy_v_eso_h,
-		(ParamFloat<px4::params::HY_THRUST_MAX>) _param_hy_thrust_max,
-
-		(ParamFloat<px4::params::HY_HR_D_KP>) _param_hy_hr_d_kp,
-		(ParamFloat<px4::params::HY_HR_D_KD>) _param_hy_hr_d_kd,
-		(ParamFloat<px4::params::HY_HR_DEP_FF>) _param_hy_hr_dep_ff,
-		(ParamFloat<px4::params::HY_HR_D_B0_INV>) _param_hy_hr_d_b0_inv,
-		(ParamFloat<px4::params::HY_HR_D_WO>) _param_hy_hr_d_wo,
-		(ParamFloat<px4::params::HY_HR_V_KP>) _param_hy_hr_v_kp,
-		(ParamFloat<px4::params::HY_HR_VA_FF>) _param_hy_hr_va_ff,
-		(ParamFloat<px4::params::HY_HR_V_B0_INV>) _param_hy_hr_v_b0_inv,
-		(ParamFloat<px4::params::HY_HR_V_WO>) _param_hy_hr_v_wo,
-		(ParamFloat<px4::params::HY_HR_D_ALP>) _param_hy_hr_d_alp,
-		(ParamFloat<px4::params::HY_HR_V_ALP>) _param_hy_hr_v_alp,
-		(ParamInt<px4::params::HY_HR_WIN>) _param_hy_hr_win,
-		(ParamInt<px4::params::HY_HR_MIN>) _param_hy_hr_min,
-		(ParamInt<px4::params::HY_HR_DECIM>) _param_hy_hr_decim,
-		(ParamFloat<px4::params::HY_HR_FORGET>) _param_hy_hr_forget,
-		(ParamFloat<px4::params::HY_HR_RIDGE>) _param_hy_hr_ridge,
-		(ParamFloat<px4::params::HY_HR_RLPF>) _param_hy_hr_rlpf,
-		(ParamFloat<px4::params::HY_HR_D_RLIM>) _param_hy_hr_d_rlim,
-		(ParamFloat<px4::params::HY_HR_V_RLIM>) _param_hy_hr_v_rlim,
-		(ParamFloat<px4::params::HY_HR_RAMP>) _param_hy_hr_ramp,
-
-		(ParamFloat<px4::params::HY_SA_D_SP>) _param_hy_sa_d_sp,
-		(ParamFloat<px4::params::HY_SA_D_SD>) _param_hy_sa_d_sd,
-		(ParamFloat<px4::params::HY_SA_D_DP>) _param_hy_sa_d_dp,
-		(ParamFloat<px4::params::HY_SA_D_DD>) _param_hy_sa_d_dd,
-		(ParamFloat<px4::params::HY_SA_DEP_FF>) _param_hy_sa_dep_ff,
-		(ParamFloat<px4::params::HY_SA_D_B0_INV>) _param_hy_sa_d_b0_inv,
-		(ParamFloat<px4::params::HY_SA_D_DLP>) _param_hy_sa_d_dlp,
-		(ParamFloat<px4::params::HY_SA_D_DLD>) _param_hy_sa_d_dld,
-		(ParamFloat<px4::params::HY_SA_D_A1>) _param_hy_sa_d_a1,
-		(ParamFloat<px4::params::HY_SA_D_A2>) _param_hy_sa_d_a2,
-		(ParamFloat<px4::params::HY_SA_D_GAM>) _param_hy_sa_d_gam,
-		(ParamFloat<px4::params::HY_SA_D_DNM>) _param_hy_sa_d_dnm,
-		(ParamFloat<px4::params::HY_SA_D_TLM>) _param_hy_sa_d_tlm,
-		(ParamFloat<px4::params::HY_SA_D_LLM>) _param_hy_sa_d_llm,
-		(ParamFloat<px4::params::HY_SA_V_SP>) _param_hy_sa_v_sp,
-		(ParamFloat<px4::params::HY_SA_V_SD>) _param_hy_sa_v_sd,
-		(ParamFloat<px4::params::HY_SA_V_DP>) _param_hy_sa_v_dp,
-		(ParamFloat<px4::params::HY_SA_V_DD>) _param_hy_sa_v_dd,
-		(ParamFloat<px4::params::HY_SA_VA_FF>) _param_hy_sa_va_ff,
-		(ParamFloat<px4::params::HY_SA_V_B0_INV>) _param_hy_sa_v_b0_inv,
-		(ParamFloat<px4::params::HY_SA_V_DLP>) _param_hy_sa_v_dlp,
-		(ParamFloat<px4::params::HY_SA_V_DLD>) _param_hy_sa_v_dld,
-		(ParamFloat<px4::params::HY_SA_V_A1>) _param_hy_sa_v_a1,
-		(ParamFloat<px4::params::HY_SA_V_A2>) _param_hy_sa_v_a2,
-		(ParamFloat<px4::params::HY_SA_V_GAM>) _param_hy_sa_v_gam,
-		(ParamFloat<px4::params::HY_SA_V_DNM>) _param_hy_sa_v_dnm,
-		(ParamFloat<px4::params::HY_SA_V_TLM>) _param_hy_sa_v_tlm,
-		(ParamFloat<px4::params::HY_SA_V_LLM>) _param_hy_sa_v_llm,
-		(ParamFloat<px4::params::HY_SA_DER_TC>) _param_hy_sa_der_tc,
-		(ParamFloat<px4::params::HY_SA_RAMP>) _param_hy_sa_ramp
+		(ParamFloat<px4::params::HY_V_ESO_H>) _param_hy_v_eso_h
 	)
 
 };

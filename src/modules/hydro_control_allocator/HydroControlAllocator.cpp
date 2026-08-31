@@ -383,7 +383,7 @@ void HydroControlAllocator::Run()
 
 		float wing_ang_max = _param_hy_wing_ang_max.get(); // rad
 
-		printf("hy r: %f %f l: %f %f \n", (double)_nf_params_hy_wr.Fx, (double)_nf_params_hy_wr.Fz, (double)_nf_params_hy_wl.Fx, (double)_nf_params_hy_wl.Fz);
+		// printf("hy r: %f %f l: %f %f \n", (double)_nf_params_hy_wr.Fx, (double)_nf_params_hy_wr.Fz, (double)_nf_params_hy_wl.Fx, (double)_nf_params_hy_wl.Fz);
 
 		float x_opt[2][2] = {{0.f, _nf_params_hy_wr.Fx*0.5f},
 			       	     {0.f, _nf_params_hy_wl.Fx*0.5f}}; // cosf单位rad
@@ -391,7 +391,7 @@ void HydroControlAllocator::Run()
 		optim(x_opt[1], _nf_params_hy_wl);
 
 		// printf("hy opt gamma: r:%f l:%f ", (double)(x_opt[0][0]/wing_ang_max), (double)(x_opt[1][0]/wing_ang_max));
-		printf("hy opt th: r:%f l:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()));
+		// printf("hy opt th: r:%f l:%f \n", (double)(x_opt[0][1]/_param_hy_thrust_max.get()), (double)(x_opt[1][1]/_param_hy_thrust_max.get()));
 		// printf("hy opt thrust: r:%f l:%f ht:%f \n", (double)(x_opt[0][1]), (double)(x_opt[1][1]), (double)_hy_tail_torque);
 
 		// LPFilter(x_opt[0][0], &_lpf_hy_wr);
