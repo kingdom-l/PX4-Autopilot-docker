@@ -120,6 +120,22 @@ typedef struct
 	float dt[100];
 } time_derivative_t;
 
+/** State of one independently filtered motion-capture position axis. */
+struct AxisJumpFilterState {
+	float value{0.f};
+	float candidate{0.f};
+	hrt_abstime last_accept_time{0};
+	uint8_t reject_count{0};
+	uint8_t candidate_count{0};
+	bool initialized{false};
+};
+
+enum class AxisFilterResult : uint8_t {
+	Rejected = 0,
+	Accepted,
+	Reacquired
+};
+
 class HydroPositionControl final : public ModuleBase<HydroPositionControl>, public ModuleParams,
 	public px4::WorkItem
 {
@@ -159,7 +175,10 @@ private:
 	struct debug_value_s _dbg_val;
 	orb_advert_t pub_dbg_val;
 
-	struct debug_vect_s _debug_vec; // 订阅动捕测量的位置信息
+	struct debug_vect_s _debug_vec{}; // 通过逐轴跳点检查后的动捕位置
+	AxisJumpFilterState _debug_x_filter{};
+	AxisJumpFilterState _debug_y_filter{};
+	AxisJumpFilterState _debug_z_filter{};
 
 	struct debug_array_s _dbg_arr;
 	orb_advert_t pub_dbg_arr;
@@ -195,6 +214,12 @@ private:
 
 	hrt_abstime _time_now{0};
 	time_derivative_t _posx_derivate = {0}, _posy_derivate = {0}, _posz_derivate = {0};
+	bool _vx_derivative_ready{false};
+	bool _vy_derivative_ready{false};
+	bool _vz_derivative_ready{false};
+	bool _derivative_ready{false};
+
+	static constexpr uint8_t JumpTimeoutReacquireSamples = 2;
 	/**
 	 * @brief Constrains the roll angle setpoint near ground to avoid wingtip strike.
 	 *
@@ -211,6 +236,16 @@ private:
 	float mapForwardForceToThrottle(float force, float resolution, float force_scale) const;
 	float mapPhysicalForwardForceToThrottle(float force, float resolution, float maximum_force) const;
 	void resetControllerStates(int controller_mode, float depth_error, float depth_error_rate, float velocity_error);
+	AxisFilterResult filterPositionAxis(float raw_value, float jump_threshold,
+			hrt_abstime now, uint8_t reacquire_samples, hrt_abstime reacquire_timeout_us,
+			AxisJumpFilterState &state);
+	void resetTimeDerivative(time_derivative_t &state, float position, hrt_abstime now);
+	void updateAxisDerivative(AxisFilterResult filter_result, const AxisJumpFilterState &filter_state,
+			float position, hrt_abstime now, uint8_t derivative_window,
+			hrt_abstime stale_timeout_us, time_derivative_t &derivative_state, bool &derivative_ready);
+	bool axisMeasurementFresh(const AxisJumpFilterState &state, hrt_abstime now,
+			hrt_abstime timeout_us) const;
+	float slewTowards(float current, float target, float time_constant, float dt) const;
 
 	static constexpr int ControllerAdrc = 0;
 	static constexpr int ControllerPid = 1;
@@ -250,6 +285,12 @@ private:
 		(ParamFloat<px4::params::HY_POS_TD_H>) _param_hy_pos_td_h,
 		(ParamFloat<px4::params::HY_POS_TD_R0>) _param_hy_pos_td_r0,
 		(ParamFloat<px4::params::HY_POS_TD_H0>) _param_hy_pos_td_h0,
+		(ParamFloat<px4::params::HY_DBG_JUMP>) _param_hy_dbg_jump,
+		(ParamInt<px4::params::HY_VEL_WIN>) _param_hy_vel_win,
+		(ParamInt<px4::params::HY_JMP_REJ_N>) _param_hy_jump_reject_count,
+		(ParamFloat<px4::params::HY_JMP_REAC_T>) _param_hy_jump_reacquire_time,
+		(ParamFloat<px4::params::HY_POS_TIMEOUT>) _param_hy_position_timeout,
+		(ParamFloat<px4::params::HY_FB_RAMP>) _param_hy_feedback_ramp,
 		(ParamFloat<px4::params::HY_DEP_SAMFREQ>) _param_hy_dep_samfreq,
 		(ParamFloat<px4::params::HY_DEP_CUTFREQ>) _param_hy_dep_cutfreq,
 		(ParamFloat<px4::params::HY_D_ESO_BETA1>) _param_hy_d_eso_beta1,

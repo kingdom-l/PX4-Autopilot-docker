@@ -196,6 +196,98 @@ PARAM_DEFINE_FLOAT(HY_VA_P, 0.08f);
 PARAM_DEFINE_FLOAT(HY_VA_I, 0.0f);
 
 /**
+ * Hydro mocap position jump threshold
+ *
+ * The x, y and z axes are checked and accepted independently. An axis is
+ * rejected when it changes by more than this distance from that axis' last
+ * accepted position. No y/z offset and no velocity-dependent allowance are
+ * applied. Set to 0 to disable finite-position jump rejection.
+ *
+ * @unit m
+ * @min 0.0
+ * @max 10.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_DBG_JUMP, 0.2f);
+
+/**
+ * Position-derivative sliding-window length
+ *
+ * Number of accepted samples used by TimeDerivativeCalc. Odd values are
+ * rounded up to the next even value because the algorithm uses two
+ * half-windows.
+ *
+ * @min 4
+ * @max 100
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_INT32(HY_VEL_WIN, 10);
+
+/**
+ * Consecutive consistent samples required for jump reacquisition
+ *
+ * After an axis rejects a step, this many mutually consistent finite samples
+ * are required before that axis accepts the new position. Reacquisition resets
+ * only that axis' derivative estimator.
+ *
+ * @min 2
+ * @max 20
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_INT32(HY_JMP_REJ_N, 3);
+
+/**
+ * Jump-filter reacquisition timeout
+ *
+ * After this interval without an accepted sample, two consecutive consistent
+ * finite samples may reinitialize that axis. The corresponding derivative
+ * estimator is reset and must warm up again.
+ *
+ * @unit s
+ * @min 0.05
+ * @max 2.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_JMP_REAC_T, 0.30f);
+
+/**
+ * Position-feedback validity timeout
+ *
+ * A rejected or missing axis sample may use its last accepted position only
+ * for this interval. SACT adaptation and ESO/HRP are paused while derivatives
+ * re-warm; the base controller remains active. After this timeout stale
+ * feedback is removed from control.
+ *
+ * @unit s
+ * @min 0.10
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_POS_TIMEOUT, 0.50f);
+
+/**
+ * Stale-feedback fallback ramp time
+ *
+ * When feedback times out while armed, forward output moves smoothly to zero
+ * and vertical output moves smoothly to feedforward-only control. Disarming
+ * and emergency throttle cut still clear outputs immediately.
+ *
+ * @unit s
+ * @min 0.05
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Hydro Position Control
+ */
+PARAM_DEFINE_FLOAT(HY_FB_RAMP, 0.50f);
+
+/**
  * Hydro vel forward feedback gain.
  *
  * @unit

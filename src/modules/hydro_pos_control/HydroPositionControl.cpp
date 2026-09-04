@@ -163,6 +163,128 @@ uint8_t HydroPositionControl::TimeDerivativeCalc(uint8_t times, time_derivative_
 	return 0;
 }
 
+AxisFilterResult HydroPositionControl::filterPositionAxis(float raw_value, float jump_threshold,
+		hrt_abstime now, uint8_t reacquire_samples, hrt_abstime reacquire_timeout_us,
+		AxisJumpFilterState &state)
+{
+	// 非有限值只能短时保持，不能成为新的有效参考点或重捕获候选点。
+	if (!PX4_ISFINITE(raw_value)) {
+		if (state.reject_count < 255) {
+			state.reject_count++;
+		}
+
+		state.candidate_count = 0;
+		return AxisFilterResult::Rejected;
+	}
+
+	// 延续原HY_DBG_JUMP语义：直接比较相邻有效位置；参数<=0时关闭
+	// 有限位置的跳变拒绝。三个轴使用同一完整门限，不再对y/z减常数。
+	const bool jump_rejection_enabled = PX4_ISFINITE(jump_threshold) && (jump_threshold > 0.f);
+
+	if (!state.initialized) {
+		state.value = raw_value;
+		state.candidate = raw_value;
+		state.last_accept_time = now;
+		state.reject_count = 0;
+		state.candidate_count = 0;
+		state.initialized = true;
+		return AxisFilterResult::Reacquired;
+	}
+
+	const bool accept_gap_timed_out = (state.last_accept_time > 0) && (now >= state.last_accept_time)
+					   && ((now - state.last_accept_time) >= reacquire_timeout_us);
+
+	if (!jump_rejection_enabled || (fabsf(raw_value - state.value) <= jump_threshold)) {
+		state.value = raw_value;
+		state.candidate = raw_value;
+		state.last_accept_time = now;
+		state.reject_count = 0;
+		state.candidate_count = 0;
+		return accept_gap_timed_out ? AxisFilterResult::Reacquired : AxisFilterResult::Accepted;
+	}
+
+	if (state.reject_count < 255) {
+		state.reject_count++;
+	}
+
+	// 只统计跳变后彼此一致的新测量，避免连续的无规律毛刺强制重捕获。
+	if ((state.candidate_count > 0) && (fabsf(raw_value - state.candidate) <= jump_threshold)) {
+		state.candidate = raw_value;
+
+		if (state.candidate_count < 255) {
+			state.candidate_count++;
+		}
+
+	} else {
+		state.candidate = raw_value;
+		state.candidate_count = 1;
+	}
+
+	const bool timed_out = (state.last_accept_time > 0) && (now >= state.last_accept_time)
+			       && ((now - state.last_accept_time) >= reacquire_timeout_us);
+	const bool enough_consistent_samples = (state.reject_count >= reacquire_samples)
+					       && (state.candidate_count >= reacquire_samples);
+	const bool timeout_reacquisition = timed_out
+					   && (state.candidate_count >= JumpTimeoutReacquireSamples);
+
+	if (enough_consistent_samples || timeout_reacquisition) {
+		state.value = raw_value;
+		state.last_accept_time = now;
+		state.reject_count = 0;
+		state.candidate_count = 0;
+		return AxisFilterResult::Reacquired;
+	}
+
+	return AxisFilterResult::Rejected;
+}
+
+void HydroPositionControl::resetTimeDerivative(time_derivative_t &state, float position, hrt_abstime now)
+{
+	state = time_derivative_t{};
+	state.last_time = now;
+	state.init_flag = 1;
+	state.pos[0] = position;
+	state.index = 1;
+	state.vel = 0.f;
+}
+
+void HydroPositionControl::updateAxisDerivative(AxisFilterResult filter_result,
+		const AxisJumpFilterState &filter_state, float position, hrt_abstime now,
+		uint8_t derivative_window, hrt_abstime stale_timeout_us,
+		time_derivative_t &derivative_state, bool &derivative_ready)
+{
+	if (filter_result == AxisFilterResult::Reacquired) {
+		// 重新捕获后不允许跨坐标跳变求导。
+		resetTimeDerivative(derivative_state, position, now);
+		derivative_ready = false;
+		return;
+	}
+
+	if (filter_result == AxisFilterResult::Accepted) {
+		derivative_ready = TimeDerivativeCalc(derivative_window, &derivative_state, position) != 0;
+		return;
+	}
+
+	// 单个拒绝点仅保持上一有效位置和导数，不造成控制量突降。
+	// 只有长期无有效测量时，才撤销导数/观测器/自适应项的有效性。
+	if (!axisMeasurementFresh(filter_state, now, stale_timeout_us)) {
+		derivative_ready = false;
+	}
+}
+
+bool HydroPositionControl::axisMeasurementFresh(const AxisJumpFilterState &state, hrt_abstime now,
+		hrt_abstime timeout_us) const
+{
+	return state.initialized && (state.last_accept_time > 0) && (now >= state.last_accept_time)
+	       && ((now - state.last_accept_time) < timeout_us);
+}
+
+float HydroPositionControl::slewTowards(float current, float target, float time_constant, float dt) const
+{
+	const float alpha = math::constrain(dt / math::max(time_constant, 0.05f), 0.f, 1.f);
+	return current + alpha * (target - current);
+}
+
 /*
  * @brief 积分分离
  * @param e 当前误差
@@ -202,7 +324,11 @@ HydroPositionControl::Run()
 	// ****** 注释掉，避免TD输出nan ******
 	// if (_local_pos_sub.update(&_local_pos)) {
 	// ****** 注释掉，避免TD输出nan ******
-	if (_debug_vect_sub.update(&_debug_vec)) {
+	// 控制循环由姿态回调驱动。即使动捕停止发布，也必须继续执行超时检测，
+	// 否则最后一组“有效”反馈和控制输出会被无限保持。
+	debug_vect_s debug_vec_raw{};
+	const bool debug_vec_updated = _debug_vect_sub.update(&debug_vec_raw);
+	{
 
 		 if (_parameter_update_sub.updated()) {
 			parameter_update_s param_update;
@@ -241,11 +367,71 @@ HydroPositionControl::Run()
 		// orb_publish(ORB_ID(debug_value), pub_dbg_val, &_dbg_val);
 		// ****** 测试低通滤波器 ******
 
-		// ****** 测试位置对时间求导 ******
-		const bool vx_ready = TimeDerivativeCalc(25, &_posx_derivate, (double)_debug_vec.x);
-		const bool vy_ready = TimeDerivativeCalc(25, &_posy_derivate, (double)_debug_vec.y);
-		TimeDerivativeCalc(25, &_posz_derivate, (double)_debug_vec.z);
-		const bool derivative_ready = vx_ready && vy_ready;
+
+
+		// ****** 逐轴跳点过滤并计算位置导数 ******
+		const hrt_abstime filter_now = hrt_absolute_time();
+		const float jump_threshold = _param_hy_dbg_jump.get();
+		const uint8_t reacquire_samples = static_cast<uint8_t>(
+			math::constrain(_param_hy_jump_reject_count.get(), static_cast<int32_t>(2), static_cast<int32_t>(20)));
+		const hrt_abstime reacquire_timeout_us = static_cast<hrt_abstime>(1e6f * math::constrain(
+				_param_hy_jump_reacquire_time.get(), 0.05f, 2.f));
+		const hrt_abstime stale_timeout_us = static_cast<hrt_abstime>(1e6f * math::constrain(
+				_param_hy_position_timeout.get(), 0.10f, 5.f));
+		int32_t derivative_window_value = math::constrain(_param_hy_vel_win.get(),
+				static_cast<int32_t>(4), static_cast<int32_t>(100));
+		if ((derivative_window_value & 1) != 0) {
+			derivative_window_value = math::min<int32_t>(derivative_window_value + 1, 100);
+		}
+
+		const uint8_t derivative_window = static_cast<uint8_t>(derivative_window_value);
+		AxisFilterResult x_filter_result = AxisFilterResult::Rejected;
+		AxisFilterResult y_filter_result = AxisFilterResult::Rejected;
+		AxisFilterResult z_filter_result = AxisFilterResult::Rejected;
+
+		if (debug_vec_updated) {
+			x_filter_result = filterPositionAxis(debug_vec_raw.x, jump_threshold,
+					  filter_now, reacquire_samples, reacquire_timeout_us, _debug_x_filter);
+			y_filter_result = filterPositionAxis(debug_vec_raw.y, jump_threshold * 0.10f,
+					  filter_now, reacquire_samples, reacquire_timeout_us, _debug_y_filter);
+			z_filter_result = filterPositionAxis(debug_vec_raw.z, jump_threshold * 0.075f,
+					  filter_now, reacquire_samples, reacquire_timeout_us, _debug_z_filter);
+		}
+
+		// 上电后必须先获得三个有限的初始位置，禁止用默认0值进入任何控制器。
+		if (!_debug_x_filter.initialized || !_debug_y_filter.initialized || !_debug_z_filter.initialized) {
+			perf_end(_loop_perf);
+			return;
+		}
+
+		// 三轴分别保持自己的最近有效值；x/y跳点不会再冻结深度z。
+		_debug_vec.x = _debug_x_filter.value;
+		_debug_vec.y = _debug_y_filter.value;
+		_debug_vec.z = _debug_z_filter.value;
+
+		updateAxisDerivative(x_filter_result, _debug_x_filter, _debug_vec.x, filter_now,
+				     derivative_window, stale_timeout_us, _posx_derivate, _vx_derivative_ready);
+		updateAxisDerivative(y_filter_result, _debug_y_filter, _debug_vec.y, filter_now,
+				     derivative_window, stale_timeout_us, _posy_derivate, _vy_derivative_ready);
+		updateAxisDerivative(z_filter_result, _debug_z_filter, _debug_vec.z, filter_now,
+				     derivative_window, stale_timeout_us, _posz_derivate, _vz_derivative_ready);
+
+		_derivative_ready = _vx_derivative_ready && _vy_derivative_ready && _vz_derivative_ready;
+		const bool derivative_ready = _derivative_ready;
+		const bool horizontal_position_fresh = axisMeasurementFresh(_debug_x_filter, filter_now, stale_timeout_us)
+						       && axisMeasurementFresh(_debug_y_filter, filter_now, stale_timeout_us);
+		const bool depth_measurement_fresh = axisMeasurementFresh(_debug_z_filter, filter_now, stale_timeout_us);
+		const bool horizontal_velocity_valid = horizontal_position_fresh
+						       && _vx_derivative_ready && _vy_derivative_ready;
+		const bool vertical_velocity_valid = depth_measurement_fresh && _vz_derivative_ready;
+		const bool all_position_samples_accepted = debug_vec_updated
+				&& (x_filter_result == AxisFilterResult::Accepted)
+				&& (y_filter_result == AxisFilterResult::Accepted)
+				&& (z_filter_result == AxisFilterResult::Accepted);
+		const bool any_position_sample_rejected = debug_vec_updated
+				&& ((x_filter_result == AxisFilterResult::Rejected)
+				    || (y_filter_result == AxisFilterResult::Rejected)
+				    || (z_filter_result == AxisFilterResult::Rejected));
 		// printf("ad %p %p %p\n", &_posx_derivate, &_posy_derivate, &_posz_derivate);
 		// ****** 测试位置对时间求导 ******
 
@@ -288,7 +474,10 @@ HydroPositionControl::Run()
 		/************ 获得速度和深度信息 ************/
 		//_Va_hat = sqrtf(_vx_hat * _vx_hat + _vy_hat * _vy_hat + _vz_hat * _vz_hat); // TD估计的速度
 		// _Va_hat = sqrtf(_vx_hat * _vx_hat + _vy_hat * _vy_hat);
-		_Va_hat = sqrtf(_posx_derivate.vel * _posx_derivate.vel + _posy_derivate.vel * _posy_derivate.vel);
+		if (horizontal_velocity_valid) {
+			_Va_hat = sqrtf(_posx_derivate.vel * _posx_derivate.vel
+					  + _posy_derivate.vel * _posy_derivate.vel);
+		}
 		float Va_sp = _param_hy_va_sp.get();
 
 		// ****** 订阅动捕测量的深度信息，仅单个维度(高度) ******
@@ -316,7 +505,7 @@ HydroPositionControl::Run()
 		// _Va_hat = 0; // 用于调试ESO是否饱和
 		_Va_e = Va_sp - _Va_hat;
 		_depth_e = depth_sp - depth;
-		const float depth_error_rate = -_posz_derivate.vel;
+		const float depth_error_rate = vertical_velocity_valid ? -_posz_derivate.vel : 0.f;
 		// const int controller_mode = math::constrain(_param_hy_depva_pid_en.get(), ControllerAdrc, ControllerSactPlus);
 		const int controller_mode = math::constrain<int32_t>(_param_hy_depva_pid_en.get(), ControllerAdrc, ControllerSactPlus);
 
@@ -326,7 +515,35 @@ HydroPositionControl::Run()
 			_sact_active = false;
 		}
 
-		if (controller_mode == ControllerPid) {
+		const bool legacy_mode = (controller_mode == ControllerPid) || (controller_mode == ControllerAdrc);
+		const bool hold_legacy_output = legacy_mode && horizontal_position_fresh && depth_measurement_fresh
+						&& (!debug_vec_updated || any_position_sample_rejected);
+		const bool legacy_feedback_stale = legacy_mode
+						  && (!horizontal_position_fresh || !depth_measurement_fresh);
+
+		if (hold_legacy_output) {
+			// PID/ADRC也只在新的有效动捕样本上推进；短时丢帧保持上一控制量。
+
+		} else if (legacy_feedback_stale) {
+			// 旧控制器不再使用超时反馈：前向平滑降至0，垂向平滑退至前馈。
+			const float feedback_ramp_time = math::constrain(_param_hy_feedback_ramp.get(), 0.05f, 5.f);
+
+			if (!horizontal_position_fresh) {
+				_fx_sp = slewTowards(_fx_sp, 0.f, feedback_ramp_time, dt);
+				_Va_e_i = 0.f;
+			}
+
+			if (!depth_measurement_fresh) {
+				const float depth_feedforward = controller_mode == ControllerPid
+								? -_param_hy_dep_ff.get() : -_param_hy_dep_ff_adrc.get();
+				const float depth_limit = controller_mode == ControllerPid
+							? _param_hy_dep_lim.get() : _param_hy_dep_lim_adrc.get();
+				const float fz_target = math::constrain(depth_feedforward, -depth_limit, depth_limit);
+				_fz_sp = slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
+				_depth_e_i = 0.f;
+			}
+
+		} else if (controller_mode == ControllerPid) {
 			/************ 速度PID控制 ************/
 			const float ve_a = _param_hy_ve_a.get();
 			const float ve_b = math::max(_param_hy_ve_b.get(), 1e-4f);
@@ -427,12 +644,15 @@ HydroPositionControl::Run()
 			params.velocity_predictor.prediction_limit = _param_hy_hr_v_rlim.get();
 			params.velocity_predictor.noise_sigma = _param_hy_hr_v_sig.get();
 
-			// The basic Kp/Kd controller is always evaluated so its unsaturated
-			// output can be inspected while the vehicle is stationary.
+			// 基础Kp/Kd路径与ESO/HRP解耦。导数预热时保留有效的P/前馈；
+			// 测量超时后将相应误差置零，禁止旧反馈无限参与控制。
+			const float depth_error_for_base = depth_measurement_fresh ? _depth_e : 0.f;
+			const float depth_rate_for_base = vertical_velocity_valid ? depth_error_rate : 0.f;
+			const float velocity_error_for_base = horizontal_velocity_valid ? _Va_e : 0.f;
 			const float fz_base_raw = params.depth_b0_inverse
-						  * (params.depth_kp * _depth_e + params.depth_kd * depth_error_rate)
+						  * (params.depth_kp * depth_error_for_base + params.depth_kd * depth_rate_for_base)
 						  - params.depth_feedforward;
-			const float fx_base_raw = params.velocity_b0_inverse * params.velocity_kp * _Va_e
+			const float fx_base_raw = params.velocity_b0_inverse * params.velocity_kp * velocity_error_for_base
 						  + params.velocity_feedforward;
 			const float fz_utilization = fabsf(fz_base_raw)
 						     / math::max(fabsf(params.depth_force_limit), 1e-3f);
@@ -441,20 +661,46 @@ HydroPositionControl::Run()
 
 			const bool armed = _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED;
 			const bool emergency_throttle_cut = PX4_ISFINITE(_manual_control_setpoint.throttle)
-							    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
-			const bool eadrc_enable = armed && derivative_ready && !emergency_throttle_cut;
+								    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
+			const bool actuator_available = armed && !emergency_throttle_cut;
+			const bool eadrc_update_allowed = actuator_available && derivative_ready
+							  && all_position_samples_accepted;
+			const bool hold_eadrc_output = actuator_available
+							&& horizontal_position_fresh && depth_measurement_fresh
+							&& (!debug_vec_updated || any_position_sample_rejected);
+			const float feedback_ramp_time = math::constrain(_param_hy_feedback_ramp.get(), 0.05f, 5.f);
 
-			if (!eadrc_enable) {
-				// Do not update the ESO or HRP predictor without actuator authority.
-				// The raw Kp/Kd output remains available only as a diagnostic.
+			if (hold_eadrc_output) {
+				// 没有新样本或本帧有轴被拒绝时，短时保持上一控制量；
+				// 不推进ESO和HRP窗口，也不清除其已建立状态。
+				_eadrc_hrp.setAppliedForces(_fx_sp * maximum_forward_force, _fz_sp);
+
+			} else if (!eadrc_update_allowed) {
+				// Invalid derivatives disable only ESO/HRP compensation. While armed,
+				// keep the basic Kp/Kd + feedforward path active so one rejected point
+				// or derivative re-warmup cannot abruptly remove all control force.
 				if (_eadrc_active) {
 					_eadrc_hrp.reset(_depth_e, depth_error_rate, _Va_e);
 				}
 
 				_eadrc_active = false;
-				_fx_sp = 0.f;
-				_fz_sp = 0.f;
-				_eadrc_hrp.setAppliedForces(0.f, 0.f);
+
+				if (actuator_available) {
+					const float fz_target = math::constrain(fz_base_raw,
+									 -params.depth_force_limit, params.depth_force_limit);
+					const float fx_target = horizontal_position_fresh
+								? math::constrain(fx_base_raw / maximum_forward_force, 0.f, 1.f) : 0.f;
+					_fz_sp = depth_measurement_fresh ? fz_target
+						 : slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
+					_fx_sp = horizontal_position_fresh ? fx_target
+						 : slewTowards(_fx_sp, fx_target, feedback_ramp_time, dt);
+					_eadrc_hrp.setAppliedForces(_fx_sp * maximum_forward_force, _fz_sp);
+
+				} else {
+					_fx_sp = 0.f;
+					_fz_sp = 0.f;
+					_eadrc_hrp.setAppliedForces(0.f, 0.f);
+				}
 
 				_dbg_arr.timestamp = hrt_absolute_time();
 				_dbg_arr.id = 20;
@@ -520,17 +766,45 @@ HydroPositionControl::Run()
 
 			const bool armed = _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED;
 			const bool emergency_throttle_cut = PX4_ISFINITE(_manual_control_setpoint.throttle)
-							    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
-			const bool sact_enable = armed && derivative_ready && !emergency_throttle_cut;
+								    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
+			const bool actuator_available = armed && !emergency_throttle_cut;
+			const bool sact_update_allowed = actuator_available && derivative_ready
+							&& all_position_samples_accepted;
+			const bool hold_sact_output = actuator_available
+						       && horizontal_position_fresh && depth_measurement_fresh
+						       && (!debug_vec_updated || any_position_sample_rejected);
+			const float feedback_ramp_time = math::constrain(_param_hy_feedback_ramp.get(), 0.05f, 5.f);
 
-			if (!sact_enable) {
-				// Continue evaluating nonlinear PD and fixed feedforward for static
-				// diagnostics, but clear/freeze Lambda and Theta and command no force.
+			if (hold_sact_output) {
+				// 单帧拒绝或暂无新样本：保持上一控制量，并冻结Lambda/Theta更新。
+				// 在HY_POS_TIMEOUT到期前不会因为一次跳点把输出置零。
+
+			} else if (!sact_update_allowed) {
+				// Invalid derivatives disable only Lambda/Theta adaptation. While armed,
+				// retain nonlinear PD + fixed feedforward so filtering cannot cause a
+				// sudden zero-force interval.
 				_sact_active = false;
-				const SactPlusController::Output base_output =
-					_sact_plus.update(dt, _depth_e, depth_error_rate, _Va_e, params, false);
-				_fx_sp = 0.f;
-				_fz_sp = 0.f;
+				const float depth_error_for_base = depth_measurement_fresh ? _depth_e : 0.f;
+				const float depth_rate_for_base = vertical_velocity_valid ? depth_error_rate : 0.f;
+				const float velocity_error_for_base = horizontal_velocity_valid ? _Va_e : 0.f;
+				const SactPlusController::Output base_output = _sact_plus.update(dt, depth_error_for_base,
+						depth_rate_for_base, velocity_error_for_base, params, false);
+
+				if (actuator_available) {
+					const float fz_target = math::constrain(base_output.fz_base_raw,
+									 -params.depth_force_limit, params.depth_force_limit);
+					const float fx_target = horizontal_position_fresh
+								? mapPhysicalForwardForceToThrottle(base_output.fx_base_raw,
+									_param_hy_ve_res_adrc.get(), maximum_forward_force) : 0.f;
+					_fz_sp = depth_measurement_fresh ? fz_target
+						 : slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
+					_fx_sp = horizontal_position_fresh ? fx_target
+						 : slewTowards(_fx_sp, fx_target, feedback_ramp_time, dt);
+
+				} else {
+					_fx_sp = 0.f;
+					_fz_sp = 0.f;
+				}
 
 				const float fx_utilization = fabsf(base_output.fx_base_raw)
 							     / math::max(fabsf(params.velocity_force_limit), 1e-3f);
