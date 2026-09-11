@@ -117,9 +117,29 @@ void HydroPositionControl::resetControllerStates(int controller_mode, float dept
 	_Va_e_i = 0.f;
 	_depth_e_pre = depth_error;
 	_Va_e_pre = velocity_error;
-	_eadrc_hrp.reset(depth_error, depth_error_rate, velocity_error);
-	_sact_plus.reset(velocity_error);
+	_eadrc_hrp.reset(depth_error, depth_error_rate, velocity_error, _param_hy_hr_d_z3_init.get());
+	_eadrc_update_timestamp = 0;
+	resetSactStates(velocity_error);
 	_controller_mode_previous = controller_mode;
+}
+
+void HydroPositionControl::resetSactStates(float velocity_error)
+{
+	_sact_base.reset(velocity_error);
+	_sact_depth_adaptive.reset(velocity_error);
+	_sact_velocity_adaptive.reset(velocity_error);
+	_sact_depth_compensation_hold = 0.f;
+	_sact_velocity_compensation_hold = 0.f;
+	_sact_depth_recovery_start = 0.f;
+	_sact_velocity_recovery_start = 0.f;
+	_sact_depth_recovery_elapsed = 0.f;
+	_sact_velocity_recovery_elapsed = 0.f;
+	_sact_depth_memory_valid = false;
+	_sact_velocity_memory_valid = false;
+	_sact_depth_frozen = false;
+	_sact_velocity_frozen = false;
+	_sact_depth_recovering = false;
+	_sact_velocity_recovering = false;
 }
 
 
@@ -177,8 +197,8 @@ AxisFilterResult HydroPositionControl::filterPositionAxis(float raw_value, float
 		return AxisFilterResult::Rejected;
 	}
 
-	// 延续原HY_DBG_JUMP语义：直接比较相邻有效位置；参数<=0时关闭
-	// 有限位置的跳变拒绝。三个轴使用同一完整门限，不再对y/z减常数。
+	// 延续原HY_DBG_JUMP语义：直接比较相邻有效位置；调用方传入
+	// 各轴门限，门限<=0时关闭该轴有限位置的跳变拒绝。
 	const bool jump_rejection_enabled = PX4_ISFINITE(jump_threshold) && (jump_threshold > 0.f);
 
 	if (!state.initialized) {
@@ -385,6 +405,60 @@ HydroPositionControl::Run()
 		}
 
 		const uint8_t derivative_window = static_cast<uint8_t>(derivative_window_value);
+		// Resolve the active controller mode before feedback initialization checks.
+		// eADRC-HRP has its own raw-feedback lifecycle; the legacy filtered path is
+		// still updated below for PID/original ADRC/SACT+ and for seamless mode switching.
+		const int controller_mode = math::constrain<int32_t>(_param_hy_depva_pid_en.get(), ControllerAdrc, ControllerSactPlus);
+
+		// eADRC-HRP uses an independent raw-feedback path. Every complete finite
+		// mocap sample is accepted immediately; no displacement threshold,
+		// candidate point or jump-reacquisition state is used on this path.
+		const bool eadrc_raw_sample_accepted = debug_vec_updated
+				&& PX4_ISFINITE(debug_vec_raw.x)
+				&& PX4_ISFINITE(debug_vec_raw.y)
+				&& PX4_ISFINITE(debug_vec_raw.z);
+		const bool eadrc_raw_gap_timed_out = _eadrc_raw_feedback_initialized
+				&& (_eadrc_raw_last_sample_time > 0)
+				&& (filter_now >= _eadrc_raw_last_sample_time)
+				&& ((filter_now - _eadrc_raw_last_sample_time) >= stale_timeout_us);
+
+		if (eadrc_raw_sample_accepted) {
+			_eadrc_raw_debug_vec = debug_vec_raw;
+
+			if (!_eadrc_raw_feedback_initialized || eadrc_raw_gap_timed_out) {
+				resetTimeDerivative(_eadrc_posx_derivate, _eadrc_raw_debug_vec.x, filter_now);
+				resetTimeDerivative(_eadrc_posy_derivate, _eadrc_raw_debug_vec.y, filter_now);
+				resetTimeDerivative(_eadrc_posz_derivate, _eadrc_raw_debug_vec.z, filter_now);
+				_eadrc_vx_derivative_ready = false;
+				_eadrc_vy_derivative_ready = false;
+				_eadrc_vz_derivative_ready = false;
+
+			} else {
+				_eadrc_vx_derivative_ready = TimeDerivativeCalc(
+					derivative_window, &_eadrc_posx_derivate, _eadrc_raw_debug_vec.x) != 0;
+				_eadrc_vy_derivative_ready = TimeDerivativeCalc(
+					derivative_window, &_eadrc_posy_derivate, _eadrc_raw_debug_vec.y) != 0;
+				_eadrc_vz_derivative_ready = TimeDerivativeCalc(
+					derivative_window, &_eadrc_posz_derivate, _eadrc_raw_debug_vec.z) != 0;
+			}
+
+			_eadrc_raw_last_sample_time = filter_now;
+			_eadrc_raw_feedback_initialized = true;
+		}
+
+		const bool eadrc_raw_feedback_fresh = _eadrc_raw_feedback_initialized
+				&& (_eadrc_raw_last_sample_time > 0)
+				&& (filter_now >= _eadrc_raw_last_sample_time)
+				&& ((filter_now - _eadrc_raw_last_sample_time) < stale_timeout_us);
+
+		if (!eadrc_raw_feedback_fresh) {
+			_eadrc_vx_derivative_ready = false;
+			_eadrc_vy_derivative_ready = false;
+			_eadrc_vz_derivative_ready = false;
+		}
+
+		const bool eadrc_raw_derivative_ready = eadrc_raw_feedback_fresh
+				&& _eadrc_vx_derivative_ready && _eadrc_vy_derivative_ready;
 		AxisFilterResult x_filter_result = AxisFilterResult::Rejected;
 		AxisFilterResult y_filter_result = AxisFilterResult::Rejected;
 		AxisFilterResult z_filter_result = AxisFilterResult::Rejected;
@@ -398,8 +472,18 @@ HydroPositionControl::Run()
 					  filter_now, reacquire_samples, reacquire_timeout_us, _debug_z_filter);
 		}
 
-		// 上电后必须先获得三个有限的初始位置，禁止用默认0值进入任何控制器。
-		if (!_debug_x_filter.initialized || !_debug_y_filter.initialized || !_debug_z_filter.initialized) {
+		// Feedback initialization is controller-specific:
+		// - eADRC-HRP depends only on its independent raw debug_vect path.
+		// - PID/original ADRC/SACT+ keep the existing jump-filter initialization requirement.
+		// The legacy filters are still updated above in every mode so switching away from
+		// eADRC-HRP preserves their original continuity/reacquisition behavior.
+		if (controller_mode == ControllerEadrcHrp) {
+			if (!_eadrc_raw_feedback_initialized) {
+				perf_end(_loop_perf);
+				return;
+			}
+
+		} else if (!_debug_x_filter.initialized || !_debug_y_filter.initialized || !_debug_z_filter.initialized) {
 			perf_end(_loop_perf);
 			return;
 		}
@@ -417,21 +501,31 @@ HydroPositionControl::Run()
 				     derivative_window, stale_timeout_us, _posz_derivate, _vz_derivative_ready);
 
 		_derivative_ready = _vx_derivative_ready && _vy_derivative_ready && _vz_derivative_ready;
-		const bool derivative_ready = _derivative_ready;
 		const bool horizontal_position_fresh = axisMeasurementFresh(_debug_x_filter, filter_now, stale_timeout_us)
 						       && axisMeasurementFresh(_debug_y_filter, filter_now, stale_timeout_us);
 		const bool depth_measurement_fresh = axisMeasurementFresh(_debug_z_filter, filter_now, stale_timeout_us);
 		const bool horizontal_velocity_valid = horizontal_position_fresh
 						       && _vx_derivative_ready && _vy_derivative_ready;
 		const bool vertical_velocity_valid = depth_measurement_fresh && _vz_derivative_ready;
-		const bool all_position_samples_accepted = debug_vec_updated
-				&& (x_filter_result == AxisFilterResult::Accepted)
-				&& (y_filter_result == AxisFilterResult::Accepted)
-				&& (z_filter_result == AxisFilterResult::Accepted);
 		const bool any_position_sample_rejected = debug_vec_updated
 				&& ((x_filter_result == AxisFilterResult::Rejected)
 				    || (y_filter_result == AxisFilterResult::Rejected)
 				    || (z_filter_result == AxisFilterResult::Rejected));
+		const bool depth_sample_accepted = debug_vec_updated
+				&& (z_filter_result == AxisFilterResult::Accepted);
+		const bool velocity_sample_accepted = debug_vec_updated
+				&& (x_filter_result == AxisFilterResult::Accepted)
+				&& (y_filter_result == AxisFilterResult::Accepted);
+		const bool depth_sample_available = debug_vec_updated
+				&& (z_filter_result != AxisFilterResult::Rejected);
+		const bool velocity_sample_available = debug_vec_updated
+				&& (x_filter_result != AxisFilterResult::Rejected)
+				&& (y_filter_result != AxisFilterResult::Rejected);
+		const bool depth_sample_rejected = debug_vec_updated
+				&& (z_filter_result == AxisFilterResult::Rejected);
+		const bool velocity_sample_rejected = debug_vec_updated
+				&& ((x_filter_result == AxisFilterResult::Rejected)
+				    || (y_filter_result == AxisFilterResult::Rejected));
 		// printf("ad %p %p %p\n", &_posx_derivate, &_posy_derivate, &_posz_derivate);
 		// ****** 测试位置对时间求导 ******
 
@@ -506,92 +600,154 @@ HydroPositionControl::Run()
 		_Va_e = Va_sp - _Va_hat;
 		_depth_e = depth_sp - depth;
 		const float depth_error_rate = vertical_velocity_valid ? -_posz_derivate.vel : 0.f;
-		// const int controller_mode = math::constrain(_param_hy_depva_pid_en.get(), ControllerAdrc, ControllerSactPlus);
-		const int controller_mode = math::constrain<int32_t>(_param_hy_depva_pid_en.get(), ControllerAdrc, ControllerSactPlus);
+		const float eadrc_raw_velocity = eadrc_raw_derivative_ready
+				? sqrtf(_eadrc_posx_derivate.vel * _eadrc_posx_derivate.vel
+					+ _eadrc_posy_derivate.vel * _eadrc_posy_derivate.vel)
+				: 0.f;
+		const float eadrc_raw_depth = _eadrc_raw_feedback_initialized
+				? _eadrc_raw_debug_vec.z : 0.f;
+		const float eadrc_depth_error = depth_sp - eadrc_raw_depth;
+		const float eadrc_depth_error_rate = -_eadrc_posz_derivate.vel;
+		const float eadrc_velocity_error = Va_sp - eadrc_raw_velocity;
+		// controller_mode is resolved before the controller-specific feedback initialization check above.
 
 		if (controller_mode != _controller_mode_previous) {
 			resetControllerStates(controller_mode, _depth_e, depth_error_rate, _Va_e);
+			_pid_active = false;
 			_eadrc_active = false;
 			_sact_active = false;
 		}
 
-		const bool legacy_mode = (controller_mode == ControllerPid) || (controller_mode == ControllerAdrc);
-		const bool hold_legacy_output = legacy_mode && horizontal_position_fresh && depth_measurement_fresh
-						&& (!debug_vec_updated || any_position_sample_rejected);
-		const bool legacy_feedback_stale = legacy_mode
-						  && (!horizontal_position_fresh || !depth_measurement_fresh);
+		const bool hold_adrc_output = (controller_mode == ControllerAdrc)
+				&& horizontal_position_fresh && depth_measurement_fresh
+				&& (!debug_vec_updated || any_position_sample_rejected);
+		const bool adrc_feedback_stale = (controller_mode == ControllerAdrc)
+				&& (!horizontal_position_fresh || !depth_measurement_fresh);
 
-		if (hold_legacy_output) {
-			// PID/ADRC也只在新的有效动捕样本上推进；短时丢帧保持上一控制量。
+		if (hold_adrc_output) {
+			// 原ADRC只在新的有效动捕样本上推进；短时丢帧保持上一控制量。
 
-		} else if (legacy_feedback_stale) {
-			// 旧控制器不再使用超时反馈：前向平滑降至0，垂向平滑退至前馈。
+		} else if (adrc_feedback_stale) {
+			// 原ADRC不再使用超时反馈：前向平滑降至0，垂向平滑退至前馈。
 			const float feedback_ramp_time = math::constrain(_param_hy_feedback_ramp.get(), 0.05f, 5.f);
 
 			if (!horizontal_position_fresh) {
 				_fx_sp = slewTowards(_fx_sp, 0.f, feedback_ramp_time, dt);
-				_Va_e_i = 0.f;
 			}
 
 			if (!depth_measurement_fresh) {
-				const float depth_feedforward = controller_mode == ControllerPid
-								? -_param_hy_dep_ff.get() : -_param_hy_dep_ff_adrc.get();
-				const float depth_limit = controller_mode == ControllerPid
-							? _param_hy_dep_lim.get() : _param_hy_dep_lim_adrc.get();
+				const float depth_feedforward = -_param_hy_dep_ff_adrc.get();
+				const float depth_limit = _param_hy_dep_lim_adrc.get();
 				const float fz_target = math::constrain(depth_feedforward, -depth_limit, depth_limit);
 				_fz_sp = slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
-				_depth_e_i = 0.f;
 			}
 
 		} else if (controller_mode == ControllerPid) {
-			/************ 速度PID控制 ************/
+			/************ 逐通道冻结/恢复的PID控制 ************/
+			const bool armed = _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED;
+			const bool emergency_throttle_cut = PX4_ISFINITE(_manual_control_setpoint.throttle)
+							    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
+			const bool actuator_available = armed && !emergency_throttle_cut;
+			const float feedback_ramp_time = math::constrain(_param_hy_feedback_ramp.get(), 0.05f, 5.f);
 			const float ve_a = _param_hy_ve_a.get();
 			const float ve_b = math::max(_param_hy_ve_b.get(), 1e-4f);
-
-			if (fabsf(_Va_e) <= ve_a) {
-				_Va_e_i += _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt;
-
-			} else if (fabsf(_Va_e) <= ve_a + ve_b) {
-				_Va_e_i += _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt
-					   * (ve_b - fabsf(_Va_e) + ve_a) / ve_b;
-
-			} else {
-				_Va_e_i = 0.f;
-			}
-
-			_Va_e_pre = _Va_e;
-			_Va_e_i = math::constrain(_Va_e_i, -_param_hy_ve_ilimit.get(), _param_hy_ve_ilimit.get());
-			const float fx_force = _param_hy_va_p.get() * _Va_e + _Va_e_i + _param_hy_va_ff.get() * Va_sp;
-			_fx_sp = mapForwardForceToThrottle(fx_force, _param_hy_ve_res.get(), _param_hy_vfx_sp_slope.get());
-
-			/************ 深度PID控制 ************/
-			const float vel_fb = _param_hy_velfb_p.get() * _Va_e;
 			const float de_a = _param_hy_de_a.get();
 			const float de_b = math::max(_param_hy_de_b.get(), 1e-4f);
+			const bool velocity_integrator_update_allowed = velocity_sample_accepted && horizontal_velocity_valid;
+			const bool depth_integrator_update_allowed = depth_sample_accepted && vertical_velocity_valid;
 
-			if (fabsf(_depth_e) <= de_a) {
-				_depth_e_i += _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt;
+			if (!actuator_available) {
+				// Disarming and emergency cut are intentional reset conditions.
+				if (_pid_active) {
+					_Va_e_i = 0.f;
+					_depth_e_i = 0.f;
+					_Va_e_pre = _Va_e;
+					_depth_e_pre = _depth_e;
+				}
 
-			} else if (fabsf(_depth_e) <= de_a + de_b) {
-				_depth_e_i += _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt
-					      * (de_b - fabsf(_depth_e) + de_a) / de_b;
+				_pid_active = false;
+				_fx_sp = 0.f;
+				_fz_sp = 0.f;
 
 			} else {
-				_depth_e_i = 0.f;
+				if (!_pid_active) {
+					// Re-arm starts a new integral session; short data gaps never
+					// pass through this path.
+					_Va_e_i = 0.f;
+					_depth_e_i = 0.f;
+					_Va_e_pre = _Va_e;
+					_depth_e_pre = _depth_e;
+					_pid_active = true;
+				}
+
+				if (!horizontal_position_fresh) {
+					_Va_e_i = 0.f;
+					_fx_sp = slewTowards(_fx_sp, 0.f, feedback_ramp_time, dt);
+
+				} else if (velocity_sample_available) {
+					if (velocity_integrator_update_allowed) {
+						if (fabsf(_Va_e) <= ve_a) {
+							_Va_e_i += _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt;
+
+						} else if (fabsf(_Va_e) <= ve_a + ve_b) {
+							_Va_e_i += _param_hy_va_i.get() * (_Va_e_pre + _Va_e) * 0.5f * dt
+								   * (ve_b - fabsf(_Va_e) + ve_a) / ve_b;
+
+						} // Large error separates, but no longer clears, the integral.
+					}
+
+					// Rebase trapezoidal integration history throughout re-warmup.
+					_Va_e_pre = _Va_e;
+					_Va_e_i = math::constrain(_Va_e_i, -_param_hy_ve_ilimit.get(),
+									 _param_hy_ve_ilimit.get());
+					const float fx_force = _param_hy_va_p.get() * _Va_e + _Va_e_i
+							       + _param_hy_va_ff.get() * Va_sp;
+					_fx_sp = mapForwardForceToThrottle(fx_force, _param_hy_ve_res.get(),
+									   _param_hy_vfx_sp_slope.get());
+				}
+
+				if (!depth_measurement_fresh) {
+					_depth_e_i = 0.f;
+					const float fz_target = math::constrain(-_param_hy_dep_ff.get(),
+									       -_param_hy_dep_lim.get(), _param_hy_dep_lim.get());
+					_fz_sp = slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
+
+				} else if (depth_sample_available) {
+					if (depth_integrator_update_allowed) {
+						if (fabsf(_depth_e) <= de_a) {
+							_depth_e_i += _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt;
+
+						} else if (fabsf(_depth_e) <= de_a + de_b) {
+							_depth_e_i += _param_hy_dep_i.get() * (_depth_e_pre + _depth_e) * 0.5f * dt
+								      * (de_b - fabsf(_depth_e) + de_a) / de_b;
+
+						} // Large error freezes, rather than clears, the integral.
+					}
+
+					_depth_e_pre = _depth_e;
+					_depth_e_i = math::constrain(_depth_e_i, -_param_hy_de_ilimit.get(),
+									    _param_hy_de_ilimit.get());
+					const float vel_fb = horizontal_position_fresh ? _param_hy_velfb_p.get() * _Va_e : 0.f;
+					_fz_sp = math::constrain(_param_hy_dep_p.get() * _depth_e + vel_fb + _depth_e_i
+								 - _param_hy_dep_ff.get(), -_param_hy_dep_lim.get(),
+								 _param_hy_dep_lim.get());
+				}
+
+				// The legacy ESO topics are diagnostics in PID mode; pause them
+				// per channel whenever that channel's derivative is not valid.
+				if (velocity_integrator_update_allowed) {
+					_vel_eso.set_params(1.f / _param_hy_v_eso_b0_inv.get(), _param_hy_v_eso_beta1.get(),
+							    _param_hy_v_eso_beta2.get(), _param_hy_v_eso_h.get());
+					_vel_eso.update(_fx_sp, _Va_hat);
+				}
+
+				if (depth_integrator_update_allowed) {
+					_depth_eso.set_params(1.f / _param_hy_d_eso_b0_inv.get(), _param_hy_d_eso_beta1.get(),
+							      _param_hy_d_eso_beta2.get(), _param_hy_d_eso_beta3.get(),
+							      _param_hy_d_eso_h.get());
+					_depth_eso.update(_fz_sp, depth);
+				}
 			}
-
-			_depth_e_pre = _depth_e;
-			_depth_e_i = math::constrain(_depth_e_i, -_param_hy_de_ilimit.get(), _param_hy_de_ilimit.get());
-			_fz_sp = math::constrain(_param_hy_dep_p.get() * _depth_e + vel_fb + _depth_e_i
-						 - _param_hy_dep_ff.get(), -_param_hy_dep_lim.get(), _param_hy_dep_lim.get());
-
-			// Keep the legacy observers alive for PID diagnostics.
-			_vel_eso.set_params(1.f / _param_hy_v_eso_b0_inv.get(), _param_hy_v_eso_beta1.get(),
-					    _param_hy_v_eso_beta2.get(), _param_hy_v_eso_h.get());
-			_vel_eso.update(_fx_sp, _Va_hat);
-			_depth_eso.set_params(1.f / _param_hy_d_eso_b0_inv.get(), _param_hy_d_eso_beta1.get(),
-					      _param_hy_d_eso_beta2.get(), _param_hy_d_eso_beta3.get(), _param_hy_d_eso_h.get());
-			_depth_eso.update(_fz_sp, depth);
 
 		} else if (controller_mode == ControllerAdrc) {
 			/************ 原PX4 ADRC控制 ************/
@@ -623,6 +779,7 @@ HydroPositionControl::Run()
 			params.depth_kp = _param_hy_hr_d_kp.get();
 			params.depth_kd = _param_hy_hr_d_kd.get();
 			params.depth_observer_bandwidth = _param_hy_hr_d_wo.get();
+			params.depth_disturbance_initial = _param_hy_hr_d_z3_init.get();
 			params.velocity_kp = _param_hy_hr_v_kp.get();
 			params.velocity_observer_bandwidth = _param_hy_hr_v_wo.get();
 			params.depth_alpha = _param_hy_hr_d_alp.get();
@@ -644,15 +801,12 @@ HydroPositionControl::Run()
 			params.velocity_predictor.prediction_limit = _param_hy_hr_v_rlim.get();
 			params.velocity_predictor.noise_sigma = _param_hy_hr_v_sig.get();
 
-			// 基础Kp/Kd路径与ESO/HRP解耦。导数预热时保留有效的P/前馈；
-			// 测量超时后将相应误差置零，禁止旧反馈无限参与控制。
-			const float depth_error_for_base = depth_measurement_fresh ? _depth_e : 0.f;
-			const float depth_rate_for_base = vertical_velocity_valid ? depth_error_rate : 0.f;
-			const float velocity_error_for_base = horizontal_velocity_valid ? _Va_e : 0.f;
+			// The basic Kp/Kd controller is always evaluated so its unsaturated
+			// output can be inspected while the vehicle is stationary.
 			const float fz_base_raw = params.depth_b0_inverse
-						  * (params.depth_kp * depth_error_for_base + params.depth_kd * depth_rate_for_base)
+						  * (params.depth_kp * eadrc_depth_error + params.depth_kd * eadrc_depth_error_rate)
 						  - params.depth_feedforward;
-			const float fx_base_raw = params.velocity_b0_inverse * params.velocity_kp * velocity_error_for_base
+			const float fx_base_raw = params.velocity_b0_inverse * params.velocity_kp * eadrc_velocity_error
 						  + params.velocity_feedforward;
 			const float fz_utilization = fabsf(fz_base_raw)
 						     / math::max(fabsf(params.depth_force_limit), 1e-3f);
@@ -661,46 +815,22 @@ HydroPositionControl::Run()
 
 			const bool armed = _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED;
 			const bool emergency_throttle_cut = PX4_ISFINITE(_manual_control_setpoint.throttle)
-								    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
-			const bool actuator_available = armed && !emergency_throttle_cut;
-			const bool eadrc_update_allowed = actuator_available && derivative_ready
-							  && all_position_samples_accepted;
-			const bool hold_eadrc_output = actuator_available
-							&& horizontal_position_fresh && depth_measurement_fresh
-							&& (!debug_vec_updated || any_position_sample_rejected);
-			const float feedback_ramp_time = math::constrain(_param_hy_feedback_ramp.get(), 0.05f, 5.f);
+							    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
+			const bool eadrc_enable = armed && eadrc_raw_derivative_ready && !emergency_throttle_cut;
 
-			if (hold_eadrc_output) {
-				// 没有新样本或本帧有轴被拒绝时，短时保持上一控制量；
-				// 不推进ESO和HRP窗口，也不清除其已建立状态。
-				_eadrc_hrp.setAppliedForces(_fx_sp * maximum_forward_force, _fz_sp);
-
-			} else if (!eadrc_update_allowed) {
-				// Invalid derivatives disable only ESO/HRP compensation. While armed,
-				// keep the basic Kp/Kd + feedforward path active so one rejected point
-				// or derivative re-warmup cannot abruptly remove all control force.
+			if (!eadrc_enable) {
+				// Do not update the ESO or HRP predictor without actuator authority.
+				// The raw Kp/Kd output remains available only as a diagnostic.
 				if (_eadrc_active) {
-					_eadrc_hrp.reset(_depth_e, depth_error_rate, _Va_e);
+					_eadrc_hrp.reset(eadrc_depth_error, eadrc_depth_error_rate, eadrc_velocity_error,
+							 params.depth_disturbance_initial);
 				}
 
 				_eadrc_active = false;
-
-				if (actuator_available) {
-					const float fz_target = math::constrain(fz_base_raw,
-									 -params.depth_force_limit, params.depth_force_limit);
-					const float fx_target = horizontal_position_fresh
-								? math::constrain(fx_base_raw / maximum_forward_force, 0.f, 1.f) : 0.f;
-					_fz_sp = depth_measurement_fresh ? fz_target
-						 : slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
-					_fx_sp = horizontal_position_fresh ? fx_target
-						 : slewTowards(_fx_sp, fx_target, feedback_ramp_time, dt);
-					_eadrc_hrp.setAppliedForces(_fx_sp * maximum_forward_force, _fz_sp);
-
-				} else {
-					_fx_sp = 0.f;
-					_fz_sp = 0.f;
-					_eadrc_hrp.setAppliedForces(0.f, 0.f);
-				}
+				_eadrc_update_timestamp = 0;
+				_fx_sp = 0.f;
+				_fz_sp = 0.f;
+				_eadrc_hrp.setAppliedForces(0.f, 0.f);
 
 				_dbg_arr.timestamp = hrt_absolute_time();
 				_dbg_arr.id = 20;
@@ -712,19 +842,35 @@ HydroPositionControl::Run()
 				_dbg_arr.data[5] = fz_utilization >= 1.f ? 1.f : 0.f;
 				orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
 
-			} else {
+			} else if (eadrc_raw_sample_accepted) {
+				float eadrc_dt = dt;
+
+				if (_eadrc_active && _eadrc_update_timestamp > 0
+				    && filter_now > _eadrc_update_timestamp) {
+					eadrc_dt = math::constrain(
+						(filter_now - _eadrc_update_timestamp) * 1e-6f, 1e-3f, 0.05f);
+				}
+
 				if (!_eadrc_active) {
 					// Align the observer with the current tracking error and clear all
 					// HRP samples before applying control.
-					_eadrc_hrp.reset(_depth_e, depth_error_rate, _Va_e);
+					_eadrc_hrp.reset(eadrc_depth_error, eadrc_depth_error_rate, eadrc_velocity_error,
+							 params.depth_disturbance_initial);
 					_eadrc_active = true;
 				}
 
 				const EadrcHrpController::Output output =
-					_eadrc_hrp.update(dt, _depth_e, depth_error_rate, _Va_e, params);
+					_eadrc_hrp.update(eadrc_dt, eadrc_depth_error, eadrc_depth_error_rate,
+							  eadrc_velocity_error, params);
 				_fz_sp = output.fz_force;
 				_fx_sp = math::constrain(output.fx_force / maximum_forward_force, 0.f, 1.f);
 				_eadrc_hrp.setAppliedForces(_fx_sp * maximum_forward_force, _fz_sp);
+				_eadrc_update_timestamp = filter_now;
+
+			} else if (!_eadrc_active) {
+				_fx_sp = 0.f;
+				_fz_sp = 0.f;
+				_eadrc_hrp.setAppliedForces(0.f, 0.f);
 			}
 
 		} else {
@@ -768,80 +914,248 @@ HydroPositionControl::Run()
 			const bool emergency_throttle_cut = PX4_ISFINITE(_manual_control_setpoint.throttle)
 								    && fabsf(_manual_control_setpoint.throttle + 1.f) < 0.1f;
 			const bool actuator_available = armed && !emergency_throttle_cut;
-			const bool sact_update_allowed = actuator_available && derivative_ready
-							&& all_position_samples_accepted;
-			const bool hold_sact_output = actuator_available
-						       && horizontal_position_fresh && depth_measurement_fresh
-						       && (!debug_vec_updated || any_position_sample_rejected);
 			const float feedback_ramp_time = math::constrain(_param_hy_feedback_ramp.get(), 0.05f, 5.f);
 
-			if (hold_sact_output) {
-				// 单帧拒绝或暂无新样本：保持上一控制量，并冻结Lambda/Theta更新。
-				// 在HY_POS_TIMEOUT到期前不会因为一次跳点把输出置零。
-
-			} else if (!sact_update_allowed) {
-				// Invalid derivatives disable only Lambda/Theta adaptation. While armed,
-				// retain nonlinear PD + fixed feedforward so filtering cannot cause a
-				// sudden zero-force interval.
-				_sact_active = false;
-				const float depth_error_for_base = depth_measurement_fresh ? _depth_e : 0.f;
-				const float depth_rate_for_base = vertical_velocity_valid ? depth_error_rate : 0.f;
-				const float velocity_error_for_base = horizontal_velocity_valid ? _Va_e : 0.f;
-				const SactPlusController::Output base_output = _sact_plus.update(dt, depth_error_for_base,
-						depth_rate_for_base, velocity_error_for_base, params, false);
-
-				if (actuator_available) {
-					const float fz_target = math::constrain(base_output.fz_base_raw,
-									 -params.depth_force_limit, params.depth_force_limit);
-					const float fx_target = horizontal_position_fresh
-								? mapPhysicalForwardForceToThrottle(base_output.fx_base_raw,
-									_param_hy_ve_res_adrc.get(), maximum_forward_force) : 0.f;
-					_fz_sp = depth_measurement_fresh ? fz_target
-						 : slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
-					_fx_sp = horizontal_position_fresh ? fx_target
-						 : slewTowards(_fx_sp, fx_target, feedback_ramp_time, dt);
-
-				} else {
-					_fx_sp = 0.f;
-					_fz_sp = 0.f;
+			if (!actuator_available) {
+				// Disarming and emergency throttle cut are hard reset conditions.
+				// Do the reset once on the active-to-inactive edge.
+				if (_sact_active) {
+					resetSactStates(_Va_e);
 				}
 
-				const float fx_utilization = fabsf(base_output.fx_base_raw)
-							     / math::max(fabsf(params.velocity_force_limit), 1e-3f);
-				const float fz_utilization = fabsf(base_output.fz_base_raw)
-							     / math::max(fabsf(params.depth_force_limit), 1e-3f);
-				_dbg_arr.timestamp = hrt_absolute_time();
-				_dbg_arr.id = 21;
-				_dbg_arr.data[0] = base_output.fx_base_raw;
-				_dbg_arr.data[1] = base_output.fz_base_raw;
-				_dbg_arr.data[2] = fx_utilization;
-				_dbg_arr.data[3] = fz_utilization;
-				_dbg_arr.data[4] = fx_utilization >= 1.f ? 1.f : 0.f;
-				_dbg_arr.data[5] = fz_utilization >= 1.f ? 1.f : 0.f;
-				orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
+				_sact_active = false;
+				_fx_sp = 0.f;
+				_fz_sp = 0.f;
 
 			} else {
 				if (!_sact_active) {
-					// Clear both adaptive channels on the enable edge while leaving
-					// the continuously evaluated nonlinear PD path intact.
-					_sact_plus.resetAdaptiveStates();
+					// Arming or entering SACT+ starts a new adaptive session. Short
+					// jump rejection and derivative re-warmup never clear this flag.
+					resetSactStates(_Va_e);
 					_sact_active = true;
 				}
 
-				const SactPlusController::Output output =
-					_sact_plus.update(dt, _depth_e, depth_error_rate, _Va_e, params, true);
-				_fz_sp = output.fz_force;
-				_fx_sp = mapPhysicalForwardForceToThrottle(output.fx_force, _param_hy_ve_res_adrc.get(),
-								 maximum_forward_force);
+				// A channel is reset only after its accepted measurement has really
+				// exceeded HY_POS_TIMEOUT. The other channel remains independent.
+				if (!depth_measurement_fresh && _sact_depth_memory_valid) {
+					_sact_depth_adaptive.reset(_Va_e);
+					_sact_depth_compensation_hold = 0.f;
+					_sact_depth_memory_valid = false;
+					_sact_depth_frozen = false;
+					_sact_depth_recovering = false;
+					_sact_depth_recovery_elapsed = 0.f;
+				}
+
+				if (!horizontal_position_fresh && _sact_velocity_memory_valid) {
+					_sact_velocity_adaptive.reset(_Va_e);
+					_sact_velocity_compensation_hold = 0.f;
+					_sact_velocity_memory_valid = false;
+					_sact_velocity_frozen = false;
+					_sact_velocity_recovering = false;
+					_sact_velocity_recovery_elapsed = 0.f;
+				}
+
+				if (depth_measurement_fresh && !_sact_depth_memory_valid) {
+					_sact_depth_adaptive.reset(_Va_e);
+					_sact_depth_memory_valid = true;
+					_sact_depth_frozen = true;
+				}
+
+				if (horizontal_position_fresh && !_sact_velocity_memory_valid) {
+					_sact_velocity_adaptive.reset(_Va_e);
+					_sact_velocity_memory_valid = true;
+					_sact_velocity_frozen = true;
+				}
+
+				const bool depth_adaptation_update_allowed = _sact_depth_memory_valid
+						&& depth_sample_accepted && vertical_velocity_valid;
+				const bool velocity_adaptation_update_allowed = _sact_velocity_memory_valid
+						&& velocity_sample_accepted && horizontal_velocity_valid;
+
+				// With no new mocap sample and no timeout, hold both outputs and do
+				// not advance the base filters or either adaptive channel.
+				const bool base_update_required = debug_vec_updated
+								  || !depth_measurement_fresh || !horizontal_position_fresh;
+
+				if (base_update_required) {
+					// During derivative re-warmup, depth P and the last valid speed P
+					// remain available. Only derivative terms without a valid estimate
+					// are removed from the continuously evaluated base path.
+					const float depth_error_for_base = depth_measurement_fresh ? _depth_e : 0.f;
+					const float depth_rate_for_base = vertical_velocity_valid ? depth_error_rate : 0.f;
+					const float velocity_error_for_base = horizontal_position_fresh ? _Va_e : 0.f;
+					const SactPlusController::Output base_output = _sact_base.update(dt, depth_error_for_base,
+							depth_rate_for_base, velocity_error_for_base, params, false);
+
+					// Use one controller per adaptive channel. The unused channel is
+					// disabled so x/y re-warmup cannot advance or reset depth states,
+					// and a z-axis event cannot alter velocity Lambda/Theta.
+					SactPlusParams depth_adaptive_params = params;
+					depth_adaptive_params.velocity.proportional_scale = 0.f;
+					depth_adaptive_params.velocity.derivative_scale = 0.f;
+					depth_adaptive_params.velocity.alpha1 = 0.f;
+					depth_adaptive_params.velocity.alpha2 = 0.f;
+					depth_adaptive_params.velocity.gamma = 0.f;
+					depth_adaptive_params.velocity.nominal_disturbance = 0.f;
+					depth_adaptive_params.velocity.lambda_limit = 0.f;
+					depth_adaptive_params.velocity.theta_limit = 0.f;
+					depth_adaptive_params.depth_force_limit = 1e6f;
+
+					SactPlusParams velocity_adaptive_params = params;
+					velocity_adaptive_params.depth.proportional_scale = 0.f;
+					velocity_adaptive_params.depth.derivative_scale = 0.f;
+					velocity_adaptive_params.depth.alpha1 = 0.f;
+					velocity_adaptive_params.depth.alpha2 = 0.f;
+					velocity_adaptive_params.depth.gamma = 0.f;
+					velocity_adaptive_params.depth.nominal_disturbance = 0.f;
+					velocity_adaptive_params.depth.lambda_limit = 0.f;
+					velocity_adaptive_params.depth.theta_limit = 0.f;
+					velocity_adaptive_params.velocity_force_limit = 1e6f;
+
+					if (depth_adaptation_update_allowed) {
+						if (_sact_depth_frozen) {
+							_sact_depth_frozen = false;
+							_sact_depth_recovering = true;
+							_sact_depth_recovery_start = _sact_depth_compensation_hold;
+							_sact_depth_recovery_elapsed = 0.f;
+						}
+
+						// Ramp the adaptation law itself after re-warmup. The first
+						// accepted derivative sample synchronizes the controller's
+						// internal derivative history with zero Lambda/Theta update,
+						// avoiding a large update across the rejected-data interval.
+						const float depth_adaptation_blend = _sact_depth_recovering
+								? math::constrain(_sact_depth_recovery_elapsed / feedback_ramp_time, 0.f, 1.f)
+								: 1.f;
+						SactPlusParams depth_update_params = depth_adaptive_params;
+						depth_update_params.depth.proportional_scale *= depth_adaptation_blend;
+						depth_update_params.depth.derivative_scale *= depth_adaptation_blend;
+						depth_update_params.depth.gamma *= depth_adaptation_blend;
+						const SactPlusController::Output depth_output = _sact_depth_adaptive.update(
+								dt, _depth_e, depth_error_rate, _Va_e, depth_update_params, true);
+						const float depth_compensation_target = depth_output.fz_force - depth_output.fz_base_raw;
+
+						if (_sact_depth_recovering) {
+							_sact_depth_recovery_elapsed += dt;
+							const float blend = math::constrain(
+								_sact_depth_recovery_elapsed / feedback_ramp_time, 0.f, 1.f);
+							_sact_depth_compensation_hold = _sact_depth_recovery_start
+									+ blend * (depth_compensation_target - _sact_depth_recovery_start);
+
+							if (blend >= 1.f) {
+								_sact_depth_recovering = false;
+							}
+
+						} else {
+							_sact_depth_compensation_hold = depth_compensation_target;
+						}
+
+					} else if (debug_vec_updated && depth_measurement_fresh) {
+						// Rejected, reacquired or accepted-but-not-ready: freeze the
+						// stored depth Lambda/Theta and keep its applied compensation.
+						_sact_depth_frozen = true;
+						_sact_depth_recovering = false;
+						_sact_depth_recovery_elapsed = 0.f;
+					}
+
+					if (velocity_adaptation_update_allowed) {
+						if (_sact_velocity_frozen) {
+							_sact_velocity_frozen = false;
+							_sact_velocity_recovering = true;
+							_sact_velocity_recovery_start = _sact_velocity_compensation_hold;
+							_sact_velocity_recovery_elapsed = 0.f;
+						}
+
+						const float velocity_adaptation_blend = _sact_velocity_recovering
+								? math::constrain(_sact_velocity_recovery_elapsed / feedback_ramp_time, 0.f, 1.f)
+								: 1.f;
+						SactPlusParams velocity_update_params = velocity_adaptive_params;
+						velocity_update_params.velocity.proportional_scale *= velocity_adaptation_blend;
+						velocity_update_params.velocity.derivative_scale *= velocity_adaptation_blend;
+						velocity_update_params.velocity.gamma *= velocity_adaptation_blend;
+						const SactPlusController::Output velocity_output = _sact_velocity_adaptive.update(
+								dt, _depth_e, depth_error_rate, _Va_e, velocity_update_params, true);
+						const float velocity_compensation_target = velocity_output.fx_force
+											 - velocity_output.fx_base_raw;
+
+						if (_sact_velocity_recovering) {
+							_sact_velocity_recovery_elapsed += dt;
+							const float blend = math::constrain(
+								_sact_velocity_recovery_elapsed / feedback_ramp_time, 0.f, 1.f);
+							_sact_velocity_compensation_hold = _sact_velocity_recovery_start
+									+ blend * (velocity_compensation_target - _sact_velocity_recovery_start);
+
+							if (blend >= 1.f) {
+								_sact_velocity_recovering = false;
+							}
+
+						} else {
+							_sact_velocity_compensation_hold = velocity_compensation_target;
+						}
+
+					} else if (debug_vec_updated && horizontal_position_fresh) {
+						// x/y rejection or derivative re-warmup freezes only the
+						// velocity Lambda/Theta channel.
+						_sact_velocity_frozen = true;
+						_sact_velocity_recovering = false;
+						_sact_velocity_recovery_elapsed = 0.f;
+					}
+
+					if (depth_measurement_fresh) {
+						if (debug_vec_updated && !depth_sample_rejected) {
+							const float fz_target = math::constrain(base_output.fz_base_raw
+									+ _sact_depth_compensation_hold,
+									-params.depth_force_limit, params.depth_force_limit);
+							_fz_sp = fz_target;
+						}
+
+					} else {
+						const float fz_target = math::constrain(base_output.fz_base_raw,
+									 -params.depth_force_limit, params.depth_force_limit);
+						_fz_sp = slewTowards(_fz_sp, fz_target, feedback_ramp_time, dt);
+					}
+
+					if (horizontal_position_fresh) {
+						if (debug_vec_updated && !velocity_sample_rejected) {
+							const float fx_force_target = base_output.fx_base_raw
+										      + _sact_velocity_compensation_hold;
+							_fx_sp = mapPhysicalForwardForceToThrottle(fx_force_target,
+									_param_hy_ve_res_adrc.get(), maximum_forward_force);
+						}
+
+					} else {
+						_fx_sp = slewTowards(_fx_sp, 0.f, feedback_ramp_time, dt);
+					}
+
+					const float fx_utilization = fabsf(base_output.fx_base_raw
+										 + _sact_velocity_compensation_hold)
+							     / math::max(fabsf(params.velocity_force_limit), 1e-3f);
+					const float fz_utilization = fabsf(base_output.fz_base_raw
+										 + _sact_depth_compensation_hold)
+							     / math::max(fabsf(params.depth_force_limit), 1e-3f);
+					_dbg_arr.timestamp = hrt_absolute_time();
+					_dbg_arr.id = 21;
+					_dbg_arr.data[0] = base_output.fx_base_raw;
+					_dbg_arr.data[1] = base_output.fz_base_raw;
+					_dbg_arr.data[2] = fx_utilization;
+					_dbg_arr.data[3] = fz_utilization;
+					_dbg_arr.data[4] = fx_utilization >= 1.f ? 1.f : 0.f;
+					_dbg_arr.data[5] = fz_utilization >= 1.f ? 1.f : 0.f;
+					_dbg_arr.data[6] = _sact_velocity_compensation_hold;
+					_dbg_arr.data[7] = _sact_depth_compensation_hold;
+					_dbg_arr.data[8] = velocity_adaptation_update_allowed ? 1.f : 0.f;
+					_dbg_arr.data[9] = depth_adaptation_update_allowed ? 1.f : 0.f;
+					orb_publish(ORB_ID(debug_array), pub_dbg_arr, &_dbg_arr);
+				}
 			}
 		}
 
 		// Unified diagnostics. The output interface remains unchanged:
 		// thrust_body[0] is normalized throttle and thrust_body[2] is force in N.
 		_pos_sp.timestamp = hrt_absolute_time();
-		_pos_sp.x = _Va_hat;
+		_pos_sp.x = controller_mode == ControllerEadrcHrp ? eadrc_raw_velocity : _Va_hat;
 		_pos_sp.y = _fx_sp;
-		_pos_sp.z = depth;
+		_pos_sp.z = controller_mode == ControllerEadrcHrp ? eadrc_raw_depth : depth;
 		_pos_sp.vx = _fz_sp;
 		_pos_sp.yawspeed = static_cast<float>(controller_mode);
 
@@ -854,10 +1168,10 @@ HydroPositionControl::Run()
 			_pos_sp.yaw = _eadrc_hrp.depthPrediction();
 
 		} else if (controller_mode == ControllerSactPlus) {
-			_pos_sp.vy = _sact_plus.velocityLambda();
-			_pos_sp.vz = _sact_plus.velocityTheta();
-			_pos_sp.acceleration[0] = _sact_plus.depthLambda();
-			_pos_sp.acceleration[1] = _sact_plus.depthTheta();
+			_pos_sp.vy = _sact_velocity_adaptive.velocityLambda();
+			_pos_sp.vz = _sact_velocity_adaptive.velocityTheta();
+			_pos_sp.acceleration[0] = _sact_depth_adaptive.depthLambda();
+			_pos_sp.acceleration[1] = _sact_depth_adaptive.depthTheta();
 			_pos_sp.acceleration[2] = _Va_e;
 			_pos_sp.yaw = _depth_e;
 

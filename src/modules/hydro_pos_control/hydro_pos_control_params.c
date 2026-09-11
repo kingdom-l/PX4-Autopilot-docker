@@ -198,10 +198,12 @@ PARAM_DEFINE_FLOAT(HY_VA_I, 0.0f);
 /**
  * Hydro mocap position jump threshold
  *
- * The x, y and z axes are checked and accepted independently. An axis is
- * rejected when it changes by more than this distance from that axis' last
- * accepted position. No y/z offset and no velocity-dependent allowance are
- * applied. Set to 0 to disable finite-position jump rejection.
+ * The x, y and z axes are checked and accepted independently against their
+ * own last accepted positions. The effective thresholds are HY_DBG_JUMP for
+ * x, 0.10 * HY_DBG_JUMP for y and 0.075 * HY_DBG_JUMP for z. Set to 0 to
+ * disable finite-position jump rejection on all axes. These thresholds apply
+ * to PID, legacy ADRC and SACT; eADRC-HRP uses its independent raw finite-data
+ * path and does not apply this jump test.
  *
  * @unit m
  * @min 0.0
@@ -257,10 +259,11 @@ PARAM_DEFINE_FLOAT(HY_JMP_REAC_T, 0.30f);
 /**
  * Position-feedback validity timeout
  *
- * A rejected or missing axis sample may use its last accepted position only
- * for this interval. SACT adaptation and ESO/HRP are paused while derivatives
- * re-warm; the base controller remains active. After this timeout stale
- * feedback is removed from control.
+ * A rejected or missing filtered-axis sample may use its last accepted position
+ * only for this interval. During a short interruption the affected PID integral
+ * and SACT Lambda/Theta state are frozen. The independent eADRC-HRP raw path
+ * uses the same timeout for missing or non-finite complete samples. After this
+ * timeout stale feedback is removed and the affected controller is disabled.
  *
  * @unit s
  * @min 0.10
@@ -274,9 +277,12 @@ PARAM_DEFINE_FLOAT(HY_POS_TIMEOUT, 0.50f);
 /**
  * Stale-feedback fallback ramp time
  *
- * When feedback times out while armed, forward output moves smoothly to zero
- * and vertical output moves smoothly to feedforward-only control. Disarming
- * and emergency throttle cut still clear outputs immediately.
+ * When filtered feedback times out while armed, PID, legacy ADRC and SACT
+ * forward output moves smoothly to zero while vertical output moves to
+ * feedforward-only control. It also blends retained SACT compensation after
+ * derivative re-warmup. eADRC-HRP uses HY_HR_RAMP for its complete command
+ * enable ramp. Disarming and emergency throttle cut still clear outputs
+ * immediately.
  *
  * @unit s
  * @min 0.05
@@ -805,6 +811,18 @@ PARAM_DEFINE_FLOAT(HY_HR_D_B0_INV, 2.3f);
 PARAM_DEFINE_FLOAT(HY_HR_D_WO, 0.f);
 
 /**
+ * eADRC-HRP depth ESO z3 initial value
+ *
+ * @unit m/s^2
+ * @min -10
+ * @max 10
+ * @decimal 3
+ * @increment 0.01
+ * @group Hydro eADRC-HRP
+ */
+PARAM_DEFINE_FLOAT(HY_HR_D_Z3_INIT, -0.3f);
+
+/**
  * HRP velocity proportional gain
  *
  * This is the single startup gain; there is no separate run gain.
@@ -984,6 +1002,10 @@ PARAM_DEFINE_FLOAT(HY_HR_C_TC, 0.40f);
 
 /**
  * HRP observer compensation ramp time
+ *
+ * Ramps ESO/HRP compensation after initial enable and after an affected
+ * channel's derivative estimator has re-warmed. The base Kp/Kd and fixed
+ * feedforward path remains available throughout the ramp.
  *
  * @unit s
  * @min 0

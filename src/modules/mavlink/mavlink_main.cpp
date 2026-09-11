@@ -1460,19 +1460,19 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 		// Note: streams requiring low latency come first
 		configure_stream_local("TIMESYNC", 10.0f);
 		configure_stream_local("CAMERA_TRIGGER", unlimited_rate);
-		configure_stream_local("HIGHRES_IMU", 50.0f);
-		configure_stream_local("LOCAL_POSITION_NED", 30.0f);
-		configure_stream_local("ATTITUDE", 100.0f);
+		configure_stream_local("HIGHRES_IMU", 1.0f); // 原为50.0f --20260909
+		configure_stream_local("LOCAL_POSITION_NED", 1.0f); // 原为30.0f --20260909
+		configure_stream_local("ATTITUDE", 15.0f); // 原为100.0f --20260909
 		configure_stream_local("ALTITUDE", 10.0f);
 		configure_stream_local("DISTANCE_SENSOR", 10.0f);
 		configure_stream_local("ESC_INFO", 10.0f);
 		configure_stream_local("ESC_STATUS", 10.0f);
 		configure_stream_local("MOUNT_ORIENTATION", 10.0f);
 		configure_stream_local("OBSTACLE_DISTANCE", 10.0f);
-		configure_stream_local("ODOMETRY", 30.0f);
+		configure_stream_local("ODOMETRY", 1.0f); // 原为30.0f --20260909
 
 		configure_stream_local("ADSB_VEHICLE", unlimited_rate);
-		configure_stream_local("ATTITUDE_QUATERNION", 50.0f);
+		configure_stream_local("ATTITUDE_QUATERNION", 10.0f); // 原为50.0f --20260909
 		configure_stream_local("ATTITUDE_TARGET", 10.0f);
 		configure_stream_local("AVAILABLE_MODES", 0.3f);
 		configure_stream_local("BATTERY_STATUS", 0.5f);
@@ -1488,18 +1488,18 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 		configure_stream_local("GLOBAL_POSITION_INT", 50.0f);
 		configure_stream_local("GPS2_RAW", unlimited_rate);
 		configure_stream_local("GPS_GLOBAL_ORIGIN", 1.0f);
-		configure_stream_local("GPS_RAW_INT", unlimited_rate);
+		configure_stream_local("GPS_RAW_INT", 1.0f); // 原为unlimited_rate --20260909
 		configure_stream_local("GPS_STATUS", 1.0f);
 		configure_stream_local("HOME_POSITION", 0.5f);
 		configure_stream_local("HYGROMETER_SENSOR", 1.0f);
-		configure_stream_local("NAV_CONTROLLER_OUTPUT", 10.0f);
+		configure_stream_local("NAV_CONTROLLER_OUTPUT", 1.0f); // 原为10.0f --20260909
 		configure_stream_local("OPEN_DRONE_ID_LOCATION", 1.f);
 		configure_stream_local("OPEN_DRONE_ID_SYSTEM", 1.f);
 		configure_stream_local("OPTICAL_FLOW_RAD", 10.0f);
 		configure_stream_local("ORBIT_EXECUTION_STATUS", 5.0f);
 		configure_stream_local("PING", 1.0f);
 		configure_stream_local("POSITION_TARGET_GLOBAL_INT", 10.0f);
-		configure_stream_local("POSITION_TARGET_LOCAL_NED", 30.0f); // 10.0f
+		configure_stream_local("POSITION_TARGET_LOCAL_NED", 20.0f); // 10.0f
 		configure_stream_local("RAW_RPM", 5.0f);
 		configure_stream_local("RC_CHANNELS", 20.0f);
 		configure_stream_local("SCALED_PRESSURE", 1.0f);
@@ -1508,9 +1508,9 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 		configure_stream_local("SYSTEM_TIME", 1.0f);
 		configure_stream_local("TIME_ESTIMATE_TO_TARGET", 1.0f);
 		configure_stream_local("TRAJECTORY_REPRESENTATION_WAYPOINTS", 5.0f);
-		configure_stream_local("VFR_HUD", 10.0f);
+		configure_stream_local("VFR_HUD", 1.0f); // 原为10.0f --20260909
 		configure_stream_local("VIBRATION", 0.5f);
-		configure_stream_local("WIND_COV", 10.0f);
+		configure_stream_local("WIND_COV", 1.0f); // 原为10.0f --20260909
 
 #if !defined(CONSTRAINED_FLASH)
 		configure_stream_local("DEBUG", 10.0f);

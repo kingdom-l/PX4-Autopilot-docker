@@ -179,6 +179,9 @@ private:
 	AxisJumpFilterState _debug_x_filter{};
 	AxisJumpFilterState _debug_y_filter{};
 	AxisJumpFilterState _debug_z_filter{};
+	struct debug_vect_s _eadrc_raw_debug_vec{}; // eADRC-HRP专用：不经过跳点检测
+	hrt_abstime _eadrc_raw_last_sample_time{0};
+	bool _eadrc_raw_feedback_initialized{false};
 
 	struct debug_array_s _dbg_arr;
 	orb_advert_t pub_dbg_arr;
@@ -218,6 +221,10 @@ private:
 	bool _vy_derivative_ready{false};
 	bool _vz_derivative_ready{false};
 	bool _derivative_ready{false};
+	time_derivative_t _eadrc_posx_derivate = {0}, _eadrc_posy_derivate = {0}, _eadrc_posz_derivate = {0};
+	bool _eadrc_vx_derivative_ready{false};
+	bool _eadrc_vy_derivative_ready{false};
+	bool _eadrc_vz_derivative_ready{false};
 
 	static constexpr uint8_t JumpTimeoutReacquireSamples = 2;
 	/**
@@ -236,6 +243,7 @@ private:
 	float mapForwardForceToThrottle(float force, float resolution, float force_scale) const;
 	float mapPhysicalForwardForceToThrottle(float force, float resolution, float maximum_force) const;
 	void resetControllerStates(int controller_mode, float depth_error, float depth_error_rate, float velocity_error);
+	void resetSactStates(float velocity_error);
 	AxisFilterResult filterPositionAxis(float raw_value, float jump_threshold,
 			hrt_abstime now, uint8_t reacquire_samples, hrt_abstime reacquire_timeout_us,
 			AxisJumpFilterState &state);
@@ -253,10 +261,30 @@ private:
 	static constexpr int ControllerSactPlus = 3;
 
 	EadrcHrpController _eadrc_hrp{};
-	SactPlusController _sact_plus{};
+	hrt_abstime _eadrc_update_timestamp{0};
+	// Keep the continuously evaluated PD/feedforward path separate from the two
+	// adaptive channels. SactPlusController::update(..., false) clears its own
+	// adaptive states, so a dedicated base instance is required to freeze the
+	// depth and velocity Lambda/Theta states independently during re-warmup.
+	SactPlusController _sact_base{};
+	SactPlusController _sact_depth_adaptive{};
+	SactPlusController _sact_velocity_adaptive{};
 	int _controller_mode_previous{-1};
+	bool _pid_active{false};
 	bool _eadrc_active{false};
 	bool _sact_active{false};
+	bool _sact_depth_memory_valid{false};
+	bool _sact_velocity_memory_valid{false};
+	bool _sact_depth_frozen{false};
+	bool _sact_velocity_frozen{false};
+	bool _sact_depth_recovering{false};
+	bool _sact_velocity_recovering{false};
+	float _sact_depth_compensation_hold{0.f};
+	float _sact_velocity_compensation_hold{0.f};
+	float _sact_depth_recovery_start{0.f};
+	float _sact_velocity_recovery_start{0.f};
+	float _sact_depth_recovery_elapsed{0.f};
+	float _sact_velocity_recovery_elapsed{0.f};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_DEP_P>) _param_hy_dep_p,
@@ -320,6 +348,7 @@ private:
 		(ParamFloat<px4::params::HY_HR_DEP_FF>) _param_hy_hr_dep_ff,
 		(ParamFloat<px4::params::HY_HR_D_B0_INV>) _param_hy_hr_d_b0_inv,
 		(ParamFloat<px4::params::HY_HR_D_WO>) _param_hy_hr_d_wo,
+		(ParamFloat<px4::params::HY_HR_D_Z3_INIT>) _param_hy_hr_d_z3_init,
 		(ParamFloat<px4::params::HY_HR_V_KP>) _param_hy_hr_v_kp,
 		(ParamFloat<px4::params::HY_HR_VA_FF>) _param_hy_hr_va_ff,
 		(ParamFloat<px4::params::HY_HR_V_B0_INV>) _param_hy_hr_v_b0_inv,

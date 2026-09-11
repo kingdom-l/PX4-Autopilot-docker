@@ -97,6 +97,7 @@ struct EadrcHrpParams {
 	float depth_kp{2.f};
 	float depth_kd{5.f};
 	float depth_observer_bandwidth{8.f};
+	float depth_disturbance_initial{0.f};
 	float velocity_kp{1.f};
 	float velocity_observer_bandwidth{5.f};
 	float depth_alpha{0.f};
@@ -120,7 +121,8 @@ public:
 		float fz_force{0.f};
 	};
 
-	void reset(float depth_error, float depth_error_rate, float velocity_error);
+	void reset(float depth_error, float depth_error_rate, float velocity_error,
+		   float depth_disturbance_initial);
 	Output update(float dt, float depth_error, float depth_error_rate, float velocity_error,
 		      const EadrcHrpParams &params);
 	void setAppliedForces(float fx_force, float fz_force);

@@ -272,20 +272,21 @@ bool HrpPredictor::solveCholesky(float matrix[MaxFeatureCount][MaxFeatureCount],
 	return PX4_ISFINITE(condition_proxy);
 }
 
-void EadrcHrpController::reset(float depth_error, float depth_error_rate, float velocity_error)
+void EadrcHrpController::reset(float depth_error, float depth_error_rate, float velocity_error,
+		float depth_disturbance_initial)
 {
 	_depth_predictor.reset();
 	_velocity_predictor.reset();
 	_depth_z1 = depth_error;
 	_depth_z2 = depth_error_rate;
-	_depth_z3 = 0.f;
+	_depth_z3 = depth_disturbance_initial;
 	_velocity_z1 = velocity_error;
 	_velocity_z2 = 0.f;
 	_depth_error_previous = depth_error;
 	_depth_error_rate_previous = depth_error_rate;
 	_velocity_error_previous = velocity_error;
 	_depth_rate_state_previous = depth_error_rate;
-	_depth_disturbance_previous = 0.f;
+	_depth_disturbance_previous = depth_disturbance_initial;
 	_velocity_disturbance_previous = 0.f;
 	_depth_force_previous = 0.f;
 	_velocity_force_previous = 0.f;
@@ -361,7 +362,7 @@ EadrcHrpController::Output EadrcHrpController::update(float dt, float depth_erro
 	dt = math::constrain(dt, 1e-3f, 0.05f);
 
 	if (!_initialized) {
-		reset(depth_error, depth_error_rate, velocity_error);
+		reset(depth_error, depth_error_rate, velocity_error, params.depth_disturbance_initial);
 	}
 
 	_depth_predictor.configure(params.depth_predictor);
@@ -370,7 +371,7 @@ EadrcHrpController::Output EadrcHrpController::update(float dt, float depth_erro
 
 	if (!PX4_ISFINITE(_depth_z1) || !PX4_ISFINITE(_depth_z2) || !PX4_ISFINITE(_depth_z3)
 	    || !PX4_ISFINITE(_velocity_z1) || !PX4_ISFINITE(_velocity_z2)) {
-		reset(depth_error, depth_error_rate, velocity_error);
+		reset(depth_error, depth_error_rate, velocity_error, params.depth_disturbance_initial);
 	}
 
 	const float depth_b0 = 1.f / math::max(params.depth_b0_inverse, 1e-3f);
@@ -433,15 +434,15 @@ EadrcHrpController::Output EadrcHrpController::update(float dt, float depth_erro
 	// Reuse HY_HR_RAMP as an enable ramp for the complete control command.
 	// This removes the arming step while keeping the raw Kp/Kd output available
 	// for the disarmed static-parameter diagnostic in HydroPositionControl.
-	output.fz_force = ramp * (depth_base + depth_robust_compensation);
-	output.fx_force = ramp * (velocity_base + velocity_robust_compensation);
+	output.fz_force = depth_base + ramp * (depth_robust_compensation);
+	output.fx_force = velocity_base + ramp * (velocity_robust_compensation);
 	output.fz_force = math::constrain(output.fz_force, -fabsf(params.depth_force_limit),
 			  fabsf(params.depth_force_limit));
 	output.fx_force = math::constrain(output.fx_force, 0.f,
 			  fabsf(params.velocity_force_limit));
 
 	if (!PX4_ISFINITE(output.fz_force) || !PX4_ISFINITE(output.fx_force)) {
-		reset(depth_error, depth_error_rate, velocity_error);
+		reset(depth_error, depth_error_rate, velocity_error, params.depth_disturbance_initial);
 		return {};
 	}
 

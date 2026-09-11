@@ -300,7 +300,7 @@ void HydroControlAllocator::Run()
 	if (_hydro_thrust_setpoint_sub.update(&hydro_thrust_setpoint)) {
 		_wrench_sp(0) = hydro_thrust_setpoint.xyz[0] * 2.0f * _param_hy_thrust_max.get(); // 油门量[0, 1],但实际分配中推力改为有量纲
 		_wrench_sp(1) = hydro_thrust_setpoint.xyz[2];
-		printf("_wrench_sp: %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(1));
+		// printf("_wrench_sp: %f %f ", (double)_wrench_sp(0), (double)_wrench_sp(1));
 		if (dt > 0.005f) {
 			do_update = true;
 			_timestamp_sample = hydro_thrust_setpoint.timestamp_sample;
