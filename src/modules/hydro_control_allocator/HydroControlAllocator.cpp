@@ -342,6 +342,86 @@ void HydroControlAllocator::Run()
 			updateParams();
 			parameters_update();
 		}
+
+		// 机翼折叠功能
+		float foldwing_delta_a = dt / _param_hy_fdw_cta.get();
+		float foldwing_delta_b = dt / _param_hy_fdw_ctb.get();
+		float foldwing_sp_final;
+
+		float fdw_aux;
+
+		switch (_param_hy_fdw_aux.get()) {
+		case 0:
+			fdw_aux = 0;
+			break;
+
+		case 1:
+			fdw_aux = _manual_control_setpoint.aux1;
+			break;
+
+		case 2:
+			fdw_aux = _manual_control_setpoint.aux2;
+			break;
+
+		case 3:
+			fdw_aux = _manual_control_setpoint.aux3;
+			break;
+
+		case 4:
+			fdw_aux = _manual_control_setpoint.aux4;
+			break;
+
+		case 5:
+			fdw_aux = _manual_control_setpoint.aux5;
+			break;
+
+		case 6:
+			fdw_aux = _manual_control_setpoint.aux6;
+			break;
+
+		case 7:
+			fdw_aux = -1.0f;
+			break;
+
+		case 8:
+			fdw_aux = 1.0f;
+			break;
+
+		default:
+			fdw_aux = 0;
+		}
+
+		fdw_aux *= _param_hy_fdw_auxgain.get();
+
+		if (fdw_aux < _param_hy_fdw_dnthr.get()) {
+			foldwing_sp_final = -1;
+
+		} else if (fdw_aux > _param_hy_fdw_upthr.get()) {
+			foldwing_sp_final = 1;
+
+		} else {
+			foldwing_sp_final = 0;
+		}
+
+		if (foldwing_sp_final > _foldwing_sp) {
+			if (foldwing_sp_final - _foldwing_sp > foldwing_delta_a) {
+				_foldwing_sp += foldwing_delta_a;
+
+			} else {
+				_foldwing_sp = foldwing_sp_final;
+			}
+
+		} else {
+			if (_foldwing_sp - foldwing_sp_final > foldwing_delta_b) {
+				_foldwing_sp -= foldwing_delta_b;
+
+			} else {
+				_foldwing_sp = foldwing_sp_final;
+			}
+		}
+
+		_foldwing_sp = math::constrain(_foldwing_sp, -1.0f, 1.0f);
+
 		// 当需要产生低头力矩时，此处会给水翼电机的水平分力分配负值
 		matrix::Vector<float, HY_NUM_FORCE_COMPS> force_sp = _hy_mix * _wrench_sp;
 		// printf("hy_mix: \n");
@@ -420,6 +500,13 @@ void HydroControlAllocator::Run()
 		hydro_servos_msg.control[_param_hy_r_sv_idx.get() - 1] = math::constrain(x_opt[0][0] / wing_ang_max, -1.f, 1.f);
 		hydro_servos_msg.control[_param_hy_l_sv_idx.get() - 1] = math::constrain(x_opt[1][0] / wing_ang_max, -1.f, 1.f);
 		hydro_servos_msg.control[_param_hy_htail_sv_idx.get() - 1] = math::constrain(_hy_tail_torque, -1.f, 1.f); // /_param_hy_wing_ang_max.get()
+
+		// 折叠机翼的通道
+		int32_t fdw_idx = _param_hy_fdw_idx.get();
+
+		if (fdw_idx >= 1 && fdw_idx <= 8) {
+			hydro_servos_msg.control[fdw_idx - 1] = _foldwing_sp;
+		}
 
 		_hydro_motors_pub.publish(hydro_motors_msg);
 		_hydro_servos_pub.publish(hydro_servos_msg);

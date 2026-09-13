@@ -432,7 +432,7 @@ PARAM_DEFINE_FLOAT(HY_FXR_WEIGHT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_FZR_WEIGHT, -10);
+PARAM_DEFINE_FLOAT(HY_FZR_WEIGHT, 0);
 
 /**
  * Pitch moment weight for fxl
@@ -458,4 +458,81 @@ PARAM_DEFINE_FLOAT(HY_FXL_WEIGHT, 0);
  * @increment 0.1
  * @group Hydro Control Allocator
  */
-PARAM_DEFINE_FLOAT(HY_FZL_WEIGHT, -10);
+PARAM_DEFINE_FLOAT(HY_FZL_WEIGHT, 0);
+
+/**
+ * Foldwing fold time A
+ *
+ * @unit s
+ * @min 0.1
+ * @decimal 2
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FDW_CTA, 2.0f);
+
+/**
+ * Foldwing fold time B
+ *
+ * @unit s
+ * @min 0.1
+ * @decimal 2
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FDW_CTB, 2.0f);
+
+/**
+ * Foldwing servo index
+ *
+ * Set 0 to disable output.
+ *
+ * @min 0
+ * @max 8
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_INT32(HY_FDW_IDX, 0);
+
+/**
+ * Foldwing AUX channel
+ *
+ * @value 0 Always 0
+ * @value 1 Aux1
+ * @value 2 Aux2
+ * @value 3 Aux3
+ * @value 4 Aux4
+ * @value 5 Aux5
+ * @value 6 Aux6
+ * @value 7 Always -1
+ * @value 8 Always 1
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_INT32(HY_FDW_AUX, 0);
+
+/**
+ * Foldwing upper threshold
+ *
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FDW_UPTHR, 0.5f);
+
+/**
+ * Foldwing lower threshold
+ *
+ * @min -1.0
+ * @max 0.0
+ * @decimal 2
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FDW_DNTHR, -0.5f);
+
+/**
+ * Foldwing AUX gain
+ *
+ * Can be set negative to reverse the AUX direction.
+ *
+ * @decimal 2
+ * @group Hydro Control Allocator
+ */
+PARAM_DEFINE_FLOAT(HY_FDW_AUXGAIN, 1.0f);

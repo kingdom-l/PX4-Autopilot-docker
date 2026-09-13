@@ -151,6 +151,8 @@ private:
 	hrt_abstime _last_run{0};
 	hrt_abstime _timestamp_sample{0};
 
+	float _foldwing_sp{0};
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::HY_AIRAPEED_TRIM>) _param_hy_airspeed_trim,
 		(ParamFloat<px4::params::HY_ALPHA_TRIM>) _param_hy_alpha_trim,
@@ -187,7 +189,16 @@ private:
 		(ParamFloat<px4::params::HY_FXR_WEIGHT>) _param_hy_fxr_weight,
 		(ParamFloat<px4::params::HY_FZR_WEIGHT>) _param_hy_fzr_weight,
 		(ParamFloat<px4::params::HY_FXL_WEIGHT>) _param_hy_fxl_weight,
-		(ParamFloat<px4::params::HY_FZL_WEIGHT>) _param_hy_fzl_weight
+		(ParamFloat<px4::params::HY_FZL_WEIGHT>) _param_hy_fzl_weight,
+
+		// Foldwing
+		(ParamFloat<px4::params::HY_FDW_CTA>) _param_hy_fdw_cta,
+		(ParamFloat<px4::params::HY_FDW_CTB>) _param_hy_fdw_ctb,
+		(ParamInt<px4::params::HY_FDW_IDX>) _param_hy_fdw_idx,
+		(ParamInt<px4::params::HY_FDW_AUX>) _param_hy_fdw_aux,
+		(ParamFloat<px4::params::HY_FDW_UPTHR>) _param_hy_fdw_upthr,
+		(ParamFloat<px4::params::HY_FDW_DNTHR>) _param_hy_fdw_dnthr,
+		(ParamFloat<px4::params::HY_FDW_AUXGAIN>) _param_hy_fdw_auxgain
 	)
 
 };
